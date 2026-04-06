@@ -3,6 +3,8 @@ import { ResourceBar } from '../ui/ResourceBar.js';
 import { BuildingMenu } from '../ui/BuildingMenu.js';
 import { TileInfoPanel } from '../ui/TileInfoPanel.js';
 import { VillagerPanel } from '../ui/VillagerPanel.js';
+import { BuildModeIndicator } from '../ui/BuildModeIndicator.js';
+import { NotificationManager } from '../ui/NotificationManager.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
@@ -17,6 +19,8 @@ export class UI extends Phaser.Scene {
 
         this.resourceBar  = new ResourceBar(this);
         this.buildingMenu = new BuildingMenu(this, gameScene.resourceSystem);
+        this.buildModeIndicator = new BuildModeIndicator(this);
+        this.notificationManager = new NotificationManager(this);
         this.tileInfoPanel = new TileInfoPanel(this, gameScene.buildSystem);
         this.villagerPanel = new VillagerPanel(this, gameScene.buildSystem, gameScene.villagerManager);
 

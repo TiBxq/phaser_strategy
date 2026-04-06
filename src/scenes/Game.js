@@ -57,13 +57,15 @@ export class Game extends Phaser.Scene {
 
         GameEvents.on(EventNames.BUILD_PLACEMENT_REQUEST, ({ configId, col, row }) => {
             const result = this.buildSystem.canPlace(configId, col, row, this.tileMap);
-            if (result.valid) {
-                const building = this.buildSystem.place(configId, col, row, this.tileMap, this.villagerManager);
-                // Refresh any tiles that became fields
-                if (building.fieldTiles) {
-                    for (const ft of building.fieldTiles) {
-                        this.mapRenderer.refreshTile(ft.col, ft.row);
-                    }
+            if (!result.valid) {
+                GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: result.reason });
+                return;
+            }
+            const building = this.buildSystem.place(configId, col, row, this.tileMap, this.villagerManager);
+            // Refresh any tiles that became fields
+            if (building.fieldTiles) {
+                for (const ft of building.fieldTiles) {
+                    this.mapRenderer.refreshTile(ft.col, ft.row);
                 }
             }
         });

@@ -40,4 +40,7 @@ export const EventNames = Object.freeze({
 
     // UI requested to unassign a villager from a building
     VILLAGER_UNASSIGN_REQUEST: 'villager:unassign_request',
+
+    // Display a transient notification message to the player
+    SHOW_NOTIFICATION: 'ui:notification',   // payload: { message: string }
 });
