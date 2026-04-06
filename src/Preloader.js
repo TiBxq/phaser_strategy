@@ -166,6 +166,7 @@ export class Preloader extends Phaser.Scene {
         this._makeButton('btn-small-hover',  28, 24, 0x446688, 0x5588aa);
 
         this._makeVillagerIcon('icon-villager');
+        this._makeVillagerSprite('sprite-villager');
     }
 
     _makeResourceIcon(key, color) {
@@ -205,6 +206,22 @@ export class Preloader extends Phaser.Scene {
         g.fillStyle(0x4466aa, 1);
         g.fillRect(4, 9, 8, 7);
         g.generateTexture(key, 16, 20);
+        g.destroy();
+    }
+
+    _makeVillagerSprite(key) {
+        const g = this.make.graphics({ x: 0, y: 0, add: false });
+        // Head
+        g.fillStyle(0xffcc88, 1);
+        g.fillCircle(5, 3, 3);
+        // Body / shirt
+        g.fillStyle(0x4466aa, 1);
+        g.fillRect(2, 6, 6, 5);
+        // Outline
+        g.lineStyle(1, 0x000000, 0.4);
+        g.strokeCircle(5, 3, 3);
+        g.strokeRect(2, 6, 6, 5);
+        g.generateTexture(key, 10, 14);
         g.destroy();
     }
 }

@@ -6,6 +6,7 @@ import { ResourceSystem } from '../systems/ResourceSystem.js';
 import { BuildSystem } from '../systems/BuildSystem.js';
 import { VillagerManager } from '../systems/VillagerManager.js';
 import { ProductionSystem } from '../systems/ProductionSystem.js';
+import { VillagerRenderer } from '../villagers/VillagerRenderer.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 import { MAP_SIZE } from '../map/TileMap.js';
@@ -29,8 +30,9 @@ export class Game extends Phaser.Scene {
 
         // ── Map ────────────────────────────────────────────────────────────────
         this.tileMap         = new TileMap().generate();
-        this.mapRenderer     = new MapRenderer(this, this.tileMap);
+        this.mapRenderer      = new MapRenderer(this, this.tileMap);
         this.buildingRenderer = new BuildingRenderer(this, this.tileMap);
+        this.villagerRenderer = new VillagerRenderer(this, this.tileMap);
 
         // ── Camera ─────────────────────────────────────────────────────────────
         this._setupCamera();
