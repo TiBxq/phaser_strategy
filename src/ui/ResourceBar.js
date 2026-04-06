@@ -22,7 +22,9 @@ export class ResourceBar {
         // Background
         scene.add.image(480, 0, 'ui-topbar').setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-        this._labels = {};
+        this._labels        = {};
+        this._prevValues    = {};
+        this._flashing      = new Set();   // resource names currently mid-flash
         this._starvingFlash = false;
 
         const slotW  = 200;
@@ -60,15 +62,31 @@ export class ResourceBar {
     }
 
     _onResourcesChanged(data) {
+        this._starvingFlash = false;
         for (const name of RESOURCE_NAMES) {
             const lbl = this._labels[name];
             if (!lbl) continue;
             const amount = data[name] ?? 0;
             const cap    = data.cap ?? 200;
             lbl.setText(`${name}: ${amount}/${cap}`);
-            lbl.setColor('#eeeeff');
+
+            const prev = this._prevValues[name] ?? 0;
+            if (amount > prev) {
+                this._flashLabel(name, lbl);
+            } else if (!this._flashing.has(name)) {
+                lbl.setColor('#eeeeff');
+            }
+            this._prevValues[name] = amount;
         }
-        this._starvingFlash = false;
+    }
+
+    _flashLabel(name, lbl) {
+        this._flashing.add(name);
+        lbl.setColor('#ffff66');
+        this.scene.time.delayedCall(400, () => {
+            this._flashing.delete(name);
+            lbl.setColor('#eeeeff');
+        });
     }
 
     _onVillagersChanged({ total, unassigned }) {

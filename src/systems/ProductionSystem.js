@@ -21,6 +21,7 @@ export class ProductionSystem {
 
     _tick() {
         const produced = { food: 0, wood: 0, stone: 0, money: 0 };
+        const yields   = [];
 
         for (const building of this.buildSystem.placedBuildings.values()) {
             const config = BUILDING_CONFIGS[building.configId];
@@ -44,6 +45,8 @@ export class ProductionSystem {
             const yield_ = config.productionPerVillager * effectiveWorkers;
             this.resourceSystem.add(config.producesResource, yield_);
             produced[config.producesResource] = (produced[config.producesResource] ?? 0) + yield_;
+            yields.push({ uid: building.uid, col: building.col, row: building.row,
+                          resource: config.producesResource, amount: yield_ });
         }
 
         // Food consumption
@@ -62,6 +65,6 @@ export class ProductionSystem {
             }
         }
 
-        GameEvents.emit(EventNames.PRODUCTION_TICK, { produced, consumed });
+        GameEvents.emit(EventNames.PRODUCTION_TICK, { produced, consumed, yields });
     }
 }

@@ -7,6 +7,7 @@ import { BuildSystem } from '../systems/BuildSystem.js';
 import { VillagerManager } from '../systems/VillagerManager.js';
 import { ProductionSystem } from '../systems/ProductionSystem.js';
 import { VillagerRenderer } from '../villagers/VillagerRenderer.js';
+import { FloatingLabels } from '../ui/FloatingLabels.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 import { MAP_SIZE } from '../map/TileMap.js';
@@ -33,6 +34,7 @@ export class Game extends Phaser.Scene {
         this.mapRenderer      = new MapRenderer(this, this.tileMap);
         this.buildingRenderer = new BuildingRenderer(this, this.tileMap);
         this.villagerRenderer = new VillagerRenderer(this, this.tileMap);
+        this.floatingLabels   = new FloatingLabels(this);
 
         // ── Camera ─────────────────────────────────────────────────────────────
         this._setupCamera();
