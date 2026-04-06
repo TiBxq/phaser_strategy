@@ -8,14 +8,31 @@ const LABEL_STYLE = {
     color:      '#ddeeff',
 };
 
+const PRICE_STYLE = {
+    fontFamily: 'monospace',
+    fontSize:   '9px',
+    color:      '#ffdd88',
+};
+
+const RESOURCE_SYMBOLS = { food: 'F', wood: 'W', stone: 'S', money: '$' };
+
+function formatCost(cost) {
+    return Object.entries(cost)
+        .filter(([, v]) => v > 0)
+        .map(([k, v]) => `${RESOURCE_SYMBOLS[k]}:${v}`)
+        .join(' ');
+}
+
 // Displayed order of buildings in the menu
 const MENU_ORDER = ['HOUSE', 'FARM', 'QUARRY', 'LUMBERMILL', 'WAREHOUSE'];
 
 export class BuildingMenu {
-    constructor(scene) {
-        this.scene       = scene;
-        this._activeId   = null;
-        this._buttons    = {};
+    constructor(scene, resourceSystem) {
+        this.scene          = scene;
+        this._resourceSystem = resourceSystem;
+        this._activeId      = null;
+        this._buttons       = {};
+        this._priceTags     = {}; // id -> { text, cost }
 
         // Background
         scene.add.image(480, 640, 'ui-bottombar')
@@ -39,10 +56,17 @@ export class BuildingMenu {
                 .setDepth(1001)
                 .setInteractive({ useHandCursor: true });
 
-            const lbl = scene.add.text(x + btnW / 2, y, config.label, LABEL_STYLE)
+            const lbl = scene.add.text(x + btnW / 2, y - 7, config.label, LABEL_STYLE)
                 .setOrigin(0.5, 0.5)
                 .setScrollFactor(0)
                 .setDepth(1002);
+
+            const priceText = scene.add.text(x + btnW / 2, y + 6, formatCost(config.cost), PRICE_STYLE)
+                .setOrigin(0.5, 0.5)
+                .setScrollFactor(0)
+                .setDepth(1002);
+
+            this._priceTags[id] = { text: priceText, cost: config.cost };
 
             btn.on('pointerover', () => {
                 if (this._activeId !== id) btn.setTexture('btn-hover');
@@ -66,6 +90,16 @@ export class BuildingMenu {
 
         // Exit build mode from outside (Escape / right-click)
         GameEvents.on(EventNames.BUILD_MODE_EXIT, () => this._deactivate());
+
+        // Update price colours when resources change
+        GameEvents.on(EventNames.RESOURCES_CHANGED, () => this._updatePriceColors());
+    }
+
+    _updatePriceColors() {
+        for (const [id, { text, cost }] of Object.entries(this._priceTags)) {
+            const canAfford = this._resourceSystem.canAfford(cost);
+            text.setColor(canAfford ? '#ffdd88' : '#ff4444');
+        }
     }
 
     _activate(id) {

@@ -16,7 +16,7 @@ export class UI extends Phaser.Scene {
         const gameScene = this.scene.get('Game');
 
         this.resourceBar  = new ResourceBar(this);
-        this.buildingMenu = new BuildingMenu(this);
+        this.buildingMenu = new BuildingMenu(this, gameScene.resourceSystem);
         this.tileInfoPanel = new TileInfoPanel(this, gameScene.buildSystem);
         this.villagerPanel = new VillagerPanel(this, gameScene.buildSystem, gameScene.villagerManager);
 
