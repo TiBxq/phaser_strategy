@@ -2,6 +2,10 @@ import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { tileToWorld, TILE_DEPTH } from './MapRenderer.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
+import {
+    LAYER_FIELD, LAYER_WORKER, LAYER_BUILDING, LAYER_GHOST_TILE,
+    DEPTH_GHOST_BUILDING, DEPTH_SELECTION_OVERLAY,
+} from '../config/DepthLayers.js';
 
 // 2×2 footprint offsets
 const FOOTPRINT = [[0, 0], [1, 0], [0, 1], [1, 1]];
@@ -22,6 +26,8 @@ export class BuildingRenderer {
         this._ghost = null;
         this._currentGhostConfigId = null;
         this._ghostTileSprites = [];
+        // Selection highlight overlay for the selected building (depth 99999)
+        this._selectionOverlay = null;
 
         this._bindEvents();
     }
@@ -40,13 +46,25 @@ export class BuildingRenderer {
         GameEvents.on(EventNames.VILLAGERS_CHANGED, () => {
             this._updateWorkerTiles();
         });
+
+        GameEvents.on(EventNames.TILE_SELECTED, ({ col, row }) => {
+            const building = this._buildSystem?.getBuildingAt(col, row);
+            if (building) {
+                this._showSelectionOverlay(building);
+            } else {
+                this._clearSelectionOverlay();
+            }
+        });
+
+        GameEvents.on(EventNames.TILE_DESELECTED, () => {
+            this._clearSelectionOverlay();
+        });
     }
 
     _addBuilding(building) {
         const config   = BUILDING_CONFIGS[building.configId];
         const { x, y } = tileToWorld(building.col, building.row);
-        // Depth must exceed the frontmost footprint tile (col+1, row+1) at col+row+2
-        const depth    = building.col + building.row + 2.5;
+        const depth    = building.col + building.row + LAYER_BUILDING;
 
         const img = this.scene.add.image(x, y, config.textureKey)
             .setOrigin(0.5, 1)
@@ -68,7 +86,7 @@ export class BuildingRenderer {
         const { x, y } = tileToWorld(col, row);
         const img = this.scene.add.image(x, y, 'tile-field')
             .setOrigin(0.5, 1)
-            .setDepth(col + row + 0.2);
+            .setDepth(col + row + LAYER_FIELD);
         this._fieldSprites.set(key, img);
     }
 
@@ -107,7 +125,7 @@ export class BuildingRenderer {
                 const { x, y } = tileToWorld(col, row);
                 const sprite   = this.scene.add.image(x, y, 'tile-worker-overlay')
                     .setOrigin(0.5, 1)
-                    .setDepth(col + row + 0.25);
+                    .setDepth(col + row + LAYER_WORKER);
                 this._workerSprites.set(key, sprite);
             }
         }
@@ -121,7 +139,7 @@ export class BuildingRenderer {
             this._ghost = this.scene.add.image(0, 0, 'building-house')
                 .setOrigin(0.5, 1)
                 .setAlpha(0.55)
-                .setDepth(99999)
+                .setDepth(DEPTH_GHOST_BUILDING)
                 .setVisible(false);
         }
         const config = BUILDING_CONFIGS[configId];
@@ -167,7 +185,7 @@ export class BuildingRenderer {
                     const { x: gx, y: gy } = tileToWorld(fc + dc, fr + dr);
                     const g = this.scene.add.image(gx, gy, 'tile-ghost-claim')
                         .setOrigin(0.5, 1)
-                        .setDepth(fc + dc + fr + dr + 0.15);
+                        .setDepth(fc + dc + fr + dr + LAYER_GHOST_TILE);
                     this._ghostTileSprites.push(g);
                 }
             }
@@ -184,7 +202,7 @@ export class BuildingRenderer {
                     const { x: gx, y: gy } = tileToWorld(tc, tr);
                     const g = this.scene.add.image(gx, gy, 'tile-ghost-claim')
                         .setOrigin(0.5, 1)
-                        .setDepth(tc + tr + 0.15);
+                        .setDepth(tc + tr + LAYER_GHOST_TILE);
                     this._ghostTileSprites.push(g);
                 }
             }
@@ -199,6 +217,29 @@ export class BuildingRenderer {
             if (t.buildingId || t.isField || t.ownedBy) return false;
         }
         return true;
+    }
+
+    // ─── Building selection overlay ────────────────────────────────────────────
+
+    _showSelectionOverlay(building) {
+        const config   = BUILDING_CONFIGS[building.configId];
+        const { x, y } = tileToWorld(building.col, building.row);
+        if (!this._selectionOverlay) {
+            this._selectionOverlay = this.scene.add.image(x, y, config.textureKey)
+                .setOrigin(0.5, 1)
+                .setAlpha(0.45)
+                .setTint(0x44aaff)
+                .setDepth(DEPTH_SELECTION_OVERLAY);
+        } else {
+            this._selectionOverlay
+                .setTexture(config.textureKey)
+                .setPosition(x, y)
+                .setVisible(true);
+        }
+    }
+
+    _clearSelectionOverlay() {
+        if (this._selectionOverlay) this._selectionOverlay.setVisible(false);
     }
 
     hideGhost() {

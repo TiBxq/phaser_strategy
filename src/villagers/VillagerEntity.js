@@ -1,6 +1,7 @@
 import { tileToWorld, TILE_H } from '../map/MapRenderer.js';
 import { aStar } from '../pathfinding/AStar.js';
 import { isWalkable, randomWalkableTile } from './walkable.js';
+import { LAYER_VILLAGER } from '../config/DepthLayers.js';
 
 const MOVE_DURATION = 550;   // ms per tile step
 const IDLE_MIN_MS   = 400;
@@ -19,7 +20,7 @@ export class VillagerEntity {
         const { x, y } = tileToWorld(col, row);
         this._sprite = scene.add.image(x, y - TILE_H, 'sprite-villager')
             .setOrigin(0.5, 1)
-            .setDepth(col + row + 0.3);
+            .setDepth(col + row + LAYER_VILLAGER);
 
         // Stagger start so villagers don't all move in lockstep
         this._scheduleWander();

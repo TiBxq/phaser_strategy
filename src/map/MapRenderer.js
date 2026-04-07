@@ -2,6 +2,7 @@ import { TILE_TYPES } from '../data/TileTypes.js';
 import { MAP_SIZE } from './TileMap.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
+import { DEPTH_TILE_HOVER, LAYER_TILE_SELECT } from '../config/DepthLayers.js';
 
 export const TILE_W = 64;
 export const TILE_H = 32;
@@ -48,8 +49,8 @@ export class MapRenderer {
         // tileSprites[row][col] = Phaser Image
         this.tileSprites = [];
 
-        this._highlightSprite = null;
-        this._selectedSprite  = null;
+        this._highlightSprite  = null;
+        this._selectedSprites  = [];   // array — selection can span multiple tiles
 
         this._render();
         this._createOverlays();
@@ -110,12 +111,7 @@ export class MapRenderer {
     _createOverlays() {
         this._highlightSprite = this.scene.add.image(0, 0, 'tile-highlight')
             .setOrigin(0.5, 1)
-            .setDepth(9999)
-            .setVisible(false);
-
-        this._selectedSprite = this.scene.add.image(0, 0, 'tile-selected')
-            .setOrigin(0.5, 1)
-            .setDepth(9999)
+            .setDepth(DEPTH_TILE_HOVER)
             .setVisible(false);
     }
 
@@ -124,10 +120,8 @@ export class MapRenderer {
             this.highlightTile(col, row);
         });
 
-        GameEvents.on(EventNames.TILE_SELECTED, ({ col, row }) => {
-            this.selectTile(col, row);
-        });
-
+        // TILE_SELECTED is handled by Game.js which calls selectArea() with the
+        // correct tile list (building footprint + claimed tiles, or single tile).
         GameEvents.on(EventNames.TILE_DESELECTED, () => {
             this.clearSelection();
         });
@@ -138,13 +132,28 @@ export class MapRenderer {
         this._highlightSprite.setPosition(x, y).setVisible(true);
     }
 
-    selectTile(col, row) {
-        const { x, y } = tileToWorld(col, row);
-        this._selectedSprite.setPosition(x, y).setVisible(true);
+    /**
+     * Highlight an arbitrary set of tiles as the current selection.
+     * Replaces any previous selection.
+     */
+    selectArea(positions) {
+        this.clearSelection();
+        for (const { col, row } of positions) {
+            const { x, y } = tileToWorld(col, row);
+            // Depth just above each tile but below buildings (col+row+2.5).
+            // Building footprint highlights will be mostly hidden under the building sprite;
+            // field/forest tile highlights are fully visible. The building gets its own
+            // highlight overlay at 99999 from BuildingRenderer.
+            const sprite = this.scene.add.image(x, y, 'tile-selected')
+                .setOrigin(0.5, 1)
+                .setDepth(col + row + LAYER_TILE_SELECT);
+            this._selectedSprites.push(sprite);
+        }
     }
 
     clearSelection() {
-        this._selectedSprite.setVisible(false);
+        for (const s of this._selectedSprites) s.destroy();
+        this._selectedSprites = [];
     }
 
     /** Refresh the texture of a single tile (e.g. after it becomes a field). */

@@ -78,6 +78,25 @@ export class Game extends Phaser.Scene {
         this.scene.launch('UI');
     }
 
+    // ─── Helpers ───────────────────────────────────────────────────────────────
+
+    /** Returns claimed tile positions to highlight when a building is selected.
+     *  Footprint tiles are NOT included — the building sprite + its overlay cover them. */
+    _buildingHighlightPositions(building) {
+        const positions = [];
+        // Farm: all tiles in each 2×2 field block
+        for (const block of building.fieldTiles) {
+            for (const [dc, dr] of [[0,0],[1,0],[0,1],[1,1]]) {
+                positions.push({ col: block.col + dc, row: block.row + dr });
+            }
+        }
+        // Lumbermill: individual forest tiles
+        for (const ft of building.forestTiles) {
+            positions.push({ col: ft.col, row: ft.row });
+        }
+        return positions;
+    }
+
     // ─── Camera ────────────────────────────────────────────────────────────────
 
     _setupCamera() {
@@ -168,6 +187,11 @@ export class Game extends Phaser.Scene {
         // Handle deselect on clicking empty space or pressing Escape.
         GameEvents.on(EventNames.TILE_SELECTED, ({ col, row, tile }) => {
             this._selectedTile = { col, row, tile };
+            // Highlight building footprint + claimed tiles, or just the single tile
+            const building = this.buildSystem.getBuildingAt(col, row);
+            this.mapRenderer.selectArea(
+                building ? this._buildingHighlightPositions(building) : [{ col, row }]
+            );
         });
 
         GameEvents.on(EventNames.TILE_DESELECTED, () => {

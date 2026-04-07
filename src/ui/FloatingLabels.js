@@ -2,6 +2,7 @@ import { tileToWorld, TILE_DEPTH } from '../map/MapRenderer.js';
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
+import { DEPTH_FLOATING_LABEL } from '../config/DepthLayers.js';
 
 const RESOURCE_COLORS = {
     food:  '#44cc44',
@@ -46,7 +47,7 @@ export class FloatingLabels {
             strokeThickness: 3,
         })
             .setOrigin(0.5, 1)
-            .setDepth(99998);
+            .setDepth(DEPTH_FLOATING_LABEL);
 
         // Rise continuously over the full lifetime
         this._scene.tweens.add({
