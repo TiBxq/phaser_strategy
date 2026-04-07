@@ -32,14 +32,14 @@ export class ProductionSystem {
 
             let effectiveWorkers = assigned;
 
-            // Farm: capped by number of field tiles
+            // Farm: one worker per claimed field tile
             if (building.configId === 'FARM') {
                 effectiveWorkers = Math.min(assigned, building.fieldTiles.length);
             }
 
-            // Lumbermill: capped by adjacent forest count
+            // Lumbermill: one worker per claimed forest tile
             if (building.configId === 'LUMBERMILL') {
-                effectiveWorkers = Math.min(assigned, building.adjacentForestCount);
+                effectiveWorkers = Math.min(assigned, building.forestTiles.length);
             }
 
             const yield_ = config.productionPerVillager * effectiveWorkers;

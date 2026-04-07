@@ -27,7 +27,10 @@ export class VillagerManager {
 
         const config      = BUILDING_CONFIGS[building.configId];
         const current     = this.assignments.get(buildingUid) ?? 0;
-        const maxAllowed  = config.maxVillagers;
+        // Tile-based buildings: cap = number of claimed tiles; others: static config cap
+        const maxAllowed  = config.claimsTileType
+            ? (building.fieldTiles.length + building.forestTiles.length)
+            : config.maxVillagers;
         const canAssign   = Math.min(count, this.unassigned, maxAllowed - current);
 
         if (canAssign <= 0) return 0;

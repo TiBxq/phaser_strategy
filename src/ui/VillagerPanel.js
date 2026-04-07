@@ -129,7 +129,9 @@ export class VillagerPanel {
         if (!building) return;
         const config  = BUILDING_CONFIGS[building.configId];
         const assigned = building.assignedVillagers;
-        const max      = config.maxVillagers;
+        const max      = config.claimsTileType
+            ? (building.fieldTiles.length + building.forestTiles.length)
+            : config.maxVillagers;
 
         this._countLabel.setText(`Workers: ${assigned} / ${max}`);
         this._freeLabel.setText(`Free: ${this._unassigned}`);

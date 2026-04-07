@@ -29,8 +29,10 @@ export class Preloader extends Phaser.Scene {
         this._makeTile('tile-rocks',  CW, CH, 0x888888, 0x666666, 0x444444);
         this._makeTile('tile-field',  CW, CH, 0xc8a96e, 0xa8894e, 0x88692e);
 
-        this._makeHighlight('tile-highlight', CW, CH, 0xffee00, 0.45);
-        this._makeHighlight('tile-selected',  CW, CH, 0x44aaff, 0.65);
+        this._makeHighlight('tile-highlight',    CW, CH, 0xffee00, 0.45);
+        this._makeHighlight('tile-selected',     CW, CH, 0x44aaff, 0.65);
+        this._makeHighlight('tile-ghost-claim',  CW, CH, 0x00ffcc, 0.40);
+        this._makeWorkerOverlay('tile-worker-overlay', CW, CH);
     }
 
     _makeTile(key, cw, ch, topColor, leftColor, rightColor) {
@@ -64,6 +66,24 @@ export class Preloader extends Phaser.Scene {
             { x: cw, y: hh + 16 },
             { x: hw, y: ch },
         ], true);
+
+        g.generateTexture(key, cw, ch);
+        g.destroy();
+    }
+
+    _makeWorkerOverlay(key, cw, ch) {
+        const g  = this.make.graphics({ x: 0, y: 0, add: false });
+        const hw = cw / 2;  // 32 — horizontal center of tile top face
+        const cy = (ch - 16) / 2; // 8 — vertical center of top face
+
+        // Person centered on the top diamond face (~hw, cy)
+        g.fillStyle(0xffcc88, 1);
+        g.fillCircle(hw, cy - 3, 4);   // head
+        g.fillStyle(0x4466aa, 1);
+        g.fillRect(hw - 4, cy + 1, 8, 6); // body
+        g.lineStyle(1, 0x000000, 0.7);
+        g.strokeCircle(hw, cy - 3, 4);
+        g.strokeRect(hw - 4, cy + 1, 8, 6);
 
         g.generateTexture(key, cw, ch);
         g.destroy();

@@ -32,7 +32,7 @@ export class Game extends Phaser.Scene {
         // ── Map ────────────────────────────────────────────────────────────────
         this.tileMap         = new TileMap().generate();
         this.mapRenderer      = new MapRenderer(this, this.tileMap);
-        this.buildingRenderer = new BuildingRenderer(this, this.tileMap);
+        this.buildingRenderer = new BuildingRenderer(this, this.tileMap, this.buildSystem);
         this.villagerRenderer = new VillagerRenderer(this, this.tileMap);
         this.floatingLabels   = new FloatingLabels(this);
 

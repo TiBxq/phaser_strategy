@@ -81,6 +81,7 @@ export class TileMap {
             type: typeId,
             buildingId: null,
             isField: false,
+            ownedBy: null,   // uid of building that claimed this tile for production
         };
     }
 }
