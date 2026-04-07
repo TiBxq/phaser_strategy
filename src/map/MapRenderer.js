@@ -116,7 +116,18 @@ export class MapRenderer {
     }
 
     _bindEvents() {
+        this._buildMode = false;
+
+        GameEvents.on(EventNames.BUILD_MODE_ENTER, () => {
+            this._buildMode = true;
+            this._highlightSprite.setVisible(false);
+        });
+        GameEvents.on(EventNames.BUILD_MODE_EXIT, () => {
+            this._buildMode = false;
+        });
+
         GameEvents.on(EventNames.TILE_HOVERED, ({ col, row }) => {
+            if (this._buildMode) return;
             this.highlightTile(col, row);
         });
 

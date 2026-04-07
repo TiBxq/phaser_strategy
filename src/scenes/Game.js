@@ -186,6 +186,7 @@ export class Game extends Phaser.Scene {
         // Tile selection wired through tile sprites in MapRenderer.
         // Handle deselect on clicking empty space or pressing Escape.
         GameEvents.on(EventNames.TILE_SELECTED, ({ col, row, tile }) => {
+            if (this.inputMode === 'build') return;
             this._selectedTile = { col, row, tile };
             // Highlight building footprint + claimed tiles, or just the single tile
             const building = this.buildSystem.getBuildingAt(col, row);
