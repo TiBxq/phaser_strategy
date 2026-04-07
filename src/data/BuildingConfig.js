@@ -9,11 +9,12 @@
  *   cost                — resource cost object {food, wood, stone, money}
  *   buildableOn         — array of TILE_TYPE ids this building can be placed on
  *   requiresAdjacentTo  — tile type id that must exist in a neighbour, or null
+ *   footprint           — tile footprint size (all buildings are 2×2)
+ *   claimsTileType      — tile type this building claims for production workers, or null
  *   producesResource    — resource name string this building outputs, or null
  *   productionPerVillager — resource units produced per assigned villager per tick
- *   maxVillagers        — max villagers that can be assigned to work here
+ *   maxVillagers        — max villagers (static cap; tile-based buildings use dynamic cap)
  *   villagerCapacity    — how many villagers this building HOUSES (House only)
- *   claimsTileType      — tile type this building claims for production workers, or null
  *   onPlace             — string token dispatched by BuildSystem after placement:
  *                         null | 'spawnVillager' | 'spawnFields' | 'claimForest' | 'increaseStorageCap'
  *   description         — short text shown in TileInfoPanel
@@ -26,13 +27,14 @@ export const BUILDING_CONFIGS = Object.freeze({
         cost: { food: 0, wood: 20, stone: 0, money: 0 },
         buildableOn: ['GRASS'],
         requiresAdjacentTo: null,
+        footprint: 2,
         claimsTileType: null,
         producesResource: null,
         productionPerVillager: 0,
         maxVillagers: 0,
         villagerCapacity: 2,
         onPlace: 'spawnVillager',
-        description: 'Houses 2 villagers. Required to have workers.',
+        description: '2×2 building. Houses 2 villagers.',
     },
 
     FARM: {
@@ -42,13 +44,14 @@ export const BUILDING_CONFIGS = Object.freeze({
         cost: { food: 0, wood: 30, stone: 10, money: 0 },
         buildableOn: ['GRASS'],
         requiresAdjacentTo: null,
+        footprint: 2,
         claimsTileType: 'GRASS',
         producesResource: 'food',
         productionPerVillager: 5,
         maxVillagers: 4,
         villagerCapacity: 0,
         onPlace: 'spawnFields',
-        description: 'Claims adjacent grass as fields. Assign 1 villager per field to produce food.',
+        description: '2×2 building. Claims adjacent 2×2 grass blocks as fields. 1 villager per field → 5 food/tick.',
     },
 
     QUARRY: {
@@ -58,13 +61,14 @@ export const BUILDING_CONFIGS = Object.freeze({
         cost: { food: 0, wood: 10, stone: 0, money: 20 },
         buildableOn: ['ROCKS'],
         requiresAdjacentTo: null,
+        footprint: 2,
         claimsTileType: null,
         producesResource: 'stone',
         productionPerVillager: 3,
         maxVillagers: 3,
         villagerCapacity: 0,
         onPlace: null,
-        description: 'Must be built on rocks. Each villager produces 3 stone/tick.',
+        description: '2×2 building on rocks. Each villager → 3 stone/tick.',
     },
 
     LUMBERMILL: {
@@ -74,13 +78,14 @@ export const BUILDING_CONFIGS = Object.freeze({
         cost: { food: 0, wood: 0, stone: 20, money: 20 },
         buildableOn: ['GRASS'],
         requiresAdjacentTo: 'FOREST',
+        footprint: 2,
         claimsTileType: 'FOREST',
         producesResource: 'wood',
         productionPerVillager: 4,
-        maxVillagers: 4,
+        maxVillagers: 0,   // dynamic: floor(forestTiles.length / 4)
         villagerCapacity: 0,
         onPlace: 'claimForest',
-        description: 'Claims adjacent forest tiles. Assign 1 villager per tile to produce wood.',
+        description: '2×2 building. Claims all forest within radius 2. Workers = floor(tiles/4), each → 4 wood/tick.',
     },
 
     WAREHOUSE: {
@@ -90,12 +95,13 @@ export const BUILDING_CONFIGS = Object.freeze({
         cost: { food: 0, wood: 40, stone: 30, money: 50 },
         buildableOn: ['GRASS'],
         requiresAdjacentTo: null,
+        footprint: 2,
         claimsTileType: null,
         producesResource: null,
         productionPerVillager: 0,
         maxVillagers: 0,
         villagerCapacity: 0,
         onPlace: 'increaseStorageCap',
-        description: 'Increases all resource caps by 100.',
+        description: '2×2 building. Increases all resource caps by 100.',
     },
 });

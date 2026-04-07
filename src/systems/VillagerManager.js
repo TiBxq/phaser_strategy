@@ -27,10 +27,15 @@ export class VillagerManager {
 
         const config      = BUILDING_CONFIGS[building.configId];
         const current     = this.assignments.get(buildingUid) ?? 0;
-        // Tile-based buildings: cap = number of claimed tiles; others: static config cap
-        const maxAllowed  = config.claimsTileType
-            ? (building.fieldTiles.length + building.forestTiles.length)
-            : config.maxVillagers;
+        // Dynamic cap for tile-based buildings:
+        //   Farm: 1 worker per 2×2 field block (fieldTiles = block anchors)
+        //   Lumbermill: floor(forestTiles / 4) — one worker per 4 forest tiles
+        //   Others: static config.maxVillagers
+        const maxAllowed  = config.claimsTileType === 'FOREST'
+            ? Math.floor(building.forestTiles.length / 4)
+            : config.claimsTileType
+                ? building.fieldTiles.length
+                : config.maxVillagers;
         const canAssign   = Math.min(count, this.unassigned, maxAllowed - current);
 
         if (canAssign <= 0) return 0;

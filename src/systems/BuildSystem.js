@@ -3,6 +3,9 @@ import { CAP_PER_WAREHOUSE } from '../data/ResourceConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
+// 2×2 footprint offsets from anchor (col, row)
+const FOOTPRINT = [[0, 0], [1, 0], [0, 1], [1, 1]];
+
 export class BuildSystem {
     constructor(resourceSystem) {
         this.resourceSystem = resourceSystem;
@@ -15,38 +18,36 @@ export class BuildSystem {
 
     /**
      * Returns { valid: boolean, reason: string }.
+     * All buildings use a 2×2 footprint anchored at (col, row).
      */
     canPlace(configId, col, row, tileMap) {
         const config = BUILDING_CONFIGS[configId];
         if (!config) return { valid: false, reason: 'Unknown building type.' };
 
-        const tile = tileMap.getTile(col, row);
-        if (!tile) return { valid: false, reason: 'Out of bounds.' };
+        // Collect all 4 footprint tiles
+        const footprint = FOOTPRINT.map(([dc, dr]) => tileMap.getTile(col + dc, row + dr));
 
-        // Tile type check
-        if (!config.buildableOn.includes(tile.type)) {
+        if (footprint.some(t => !t))
+            return { valid: false, reason: 'Out of bounds.' };
+
+        if (footprint.some(t => !config.buildableOn.includes(t.type)))
             return { valid: false, reason: `Must be built on ${config.buildableOn.join(' or ')}.` };
-        }
 
-        // Tile must be empty (no building, not a farm field)
-        if (tile.buildingId) return { valid: false, reason: 'Tile already occupied.' };
-        if (tile.isField)    return { valid: false, reason: 'Tile is a farm field.' };
+        if (footprint.some(t => t.buildingId || t.isField || t.ownedBy))
+            return { valid: false, reason: 'Tile already occupied.' };
 
-        // Adjacency requirement — for buildings that claim tiles, require at least one unclaimed tile
+        // Adjacency requirement — any 4-dir neighbour of any footprint tile must qualify
         if (config.requiresAdjacentTo) {
-            const neighbours = tileMap.getNeighbors(col, row);
+            const allNeighbours = footprint.flatMap(t => tileMap.getNeighbors(t.col, t.row));
             const hasRequired = config.claimsTileType
-                ? neighbours.some(n => n.type === config.requiresAdjacentTo && !n.ownedBy)
-                : neighbours.some(n => n.type === config.requiresAdjacentTo);
-            if (!hasRequired) {
+                ? allNeighbours.some(n => n.type === config.requiresAdjacentTo && !n.ownedBy)
+                : allNeighbours.some(n => n.type === config.requiresAdjacentTo);
+            if (!hasRequired)
                 return { valid: false, reason: `Must be adjacent to an unclaimed ${config.requiresAdjacentTo}.` };
-            }
         }
 
-        // Resource check
-        if (!this.resourceSystem.canAfford(config.cost)) {
+        if (!this.resourceSystem.canAfford(config.cost))
             return { valid: false, reason: 'Insufficient resources.' };
-        }
 
         return { valid: true, reason: '' };
     }
@@ -54,7 +55,7 @@ export class BuildSystem {
     // ─── Placement ─────────────────────────────────────────────────────────────
 
     /**
-     * Places a building at (col, row). Assumes canPlace() already passed.
+     * Places a 2×2 building at anchor (col, row). Assumes canPlace() already passed.
      * Returns the BuildingInstance.
      */
     place(configId, col, row, tileMap, villagerManager) {
@@ -70,12 +71,14 @@ export class BuildSystem {
             col,
             row,
             assignedVillagers: 0,
-            fieldTiles: [],    // GRASS tiles claimed by Farm
-            forestTiles: [],   // FOREST tiles claimed by Lumbermill
+            fieldTiles: [],    // block anchors {col, row} for Farm 2×2 field blocks
+            forestTiles: [],   // individual FOREST tile positions for Lumbermill
         };
 
-        // Mark tile as occupied
-        tileMap.getTile(col, row).buildingId = uid;
+        // Mark all 4 footprint tiles as occupied
+        for (const [dc, dr] of FOOTPRINT) {
+            tileMap.getTile(col + dc, row + dr).buildingId = uid;
+        }
 
         // Handle onPlace side-effects
         switch (config.onPlace) {
@@ -83,30 +86,13 @@ export class BuildSystem {
                 villagerManager.addVillagers(config.villagerCapacity);
                 break;
 
-            case 'spawnFields': {
-                // Claim up to 4 adjacent GRASS tiles as fields (4-directional)
-                const neighbours = tileMap.getNeighbors(col, row);
-                for (const n of neighbours) {
-                    if (n.type === 'GRASS' && !n.buildingId && !n.isField && !n.ownedBy && building.fieldTiles.length < 4) {
-                        n.isField = true;
-                        n.ownedBy = uid;
-                        building.fieldTiles.push({ col: n.col, row: n.row });
-                    }
-                }
+            case 'spawnFields':
+                this._claimFieldBlocks(tileMap, col, row, uid, building);
                 break;
-            }
 
-            case 'claimForest': {
-                // Claim up to 4 adjacent FOREST tiles exclusively (4-directional)
-                const neighbours = tileMap.getNeighbors(col, row);
-                for (const n of neighbours) {
-                    if (n.type === 'FOREST' && !n.ownedBy && building.forestTiles.length < 4) {
-                        n.ownedBy = uid;
-                        building.forestTiles.push({ col: n.col, row: n.row });
-                    }
-                }
+            case 'claimForest':
+                this._claimAllForestInRadius(tileMap, col, row, uid, building);
                 break;
-            }
 
             case 'increaseStorageCap':
                 this.resourceSystem.setCap(this.resourceSystem.getCap() + CAP_PER_WAREHOUSE);
@@ -114,9 +100,7 @@ export class BuildSystem {
         }
 
         this.placedBuildings.set(uid, building);
-
         GameEvents.emit(EventNames.BUILDING_PLACED, { building });
-
         return building;
     }
 
@@ -126,17 +110,24 @@ export class BuildSystem {
         const building = this.placedBuildings.get(uid);
         if (!building) return;
 
-        const tile = tileMap.getTile(building.col, building.row);
-        if (tile) tile.buildingId = null;
-
-        // Release all claimed tiles
-        for (const ft of building.fieldTiles) {
-            const fieldTile = tileMap.getTile(ft.col, ft.row);
-            if (fieldTile) { fieldTile.isField = false; fieldTile.ownedBy = null; }
+        // Release all 4 footprint tiles
+        for (const [dc, dr] of FOOTPRINT) {
+            const t = tileMap.getTile(building.col + dc, building.row + dr);
+            if (t) t.buildingId = null;
         }
+
+        // Release field blocks (4 tiles each)
+        for (const ft of building.fieldTiles) {
+            for (const [dc, dr] of FOOTPRINT) {
+                const t = tileMap.getTile(ft.col + dc, ft.row + dr);
+                if (t) { t.isField = false; t.ownedBy = null; }
+            }
+        }
+
+        // Release individual forest tiles
         for (const ft of building.forestTiles) {
-            const forestTile = tileMap.getTile(ft.col, ft.row);
-            if (forestTile) forestTile.ownedBy = null;
+            const t = tileMap.getTile(ft.col, ft.row);
+            if (t) t.ownedBy = null;
         }
 
         this.placedBuildings.delete(uid);
@@ -149,8 +140,76 @@ export class BuildSystem {
 
     getBuildingAt(col, row) {
         for (const b of this.placedBuildings.values()) {
-            if (b.col === col && b.row === row) return b;
+            if (col >= b.col && col <= b.col + 1 && row >= b.row && row <= b.row + 1) return b;
         }
         return null;
+    }
+
+    // ─── Private helpers ───────────────────────────────────────────────────────
+
+    /**
+     * Claims up to 4 adjacent 2×2 GRASS blocks as farm fields.
+     * Tries the 4 cardinal positions (right, bottom, left, top) in order.
+     */
+    _claimFieldBlocks(tileMap, bCol, bRow, uid, building) {
+        // 4 cardinal 2×2 block anchors directly adjacent to the 2×2 building footprint
+        const candidates = [
+            { col: bCol + 2, row: bRow     },   // right
+            { col: bCol,     row: bRow + 2 },   // bottom
+            { col: bCol - 2, row: bRow     },   // left
+            { col: bCol,     row: bRow - 2 },   // top
+        ];
+
+        for (const { col: fc, row: fr } of candidates) {
+            if (!this._isValidFieldBlock(tileMap, fc, fr)) continue;
+            for (const [dc, dr] of FOOTPRINT) {
+                const t = tileMap.getTile(fc + dc, fr + dr);
+                t.isField = true;
+                t.ownedBy = uid;
+            }
+            building.fieldTiles.push({ col: fc, row: fr });
+        }
+    }
+
+    _isValidFieldBlock(tileMap, fc, fr) {
+        for (const [dc, dr] of FOOTPRINT) {
+            const t = tileMap.getTile(fc + dc, fr + dr);
+            if (!t) return false;
+            if (t.type !== 'GRASS') return false;
+            if (t.buildingId || t.isField || t.ownedBy) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Claims ALL unclaimed FOREST tiles within Manhattan radius 2 from the 2×2 building boundary.
+     * Stores them sorted by distance ascending (closest first).
+     */
+    _claimAllForestInRadius(tileMap, bCol, bRow, uid, building) {
+        const candidates = [];
+
+        for (let tc = bCol - 2; tc <= bCol + 3; tc++) {
+            for (let tr = bRow - 2; tr <= bRow + 3; tr++) {
+                const t = tileMap.getTile(tc, tr);
+                if (!t || t.type !== 'FOREST' || t.ownedBy) continue;
+
+                // Manhattan distance from tile to 2×2 footprint
+                const dx = Math.max(0, bCol - tc, tc - (bCol + 1));
+                const dy = Math.max(0, bRow - tr, tr - (bRow + 1));
+                const dist = dx + dy;
+                if (dist < 1 || dist > 2) continue;
+
+                candidates.push({ col: tc, row: tr, dist });
+            }
+        }
+
+        // Sort closest first so worker overlays appear on nearest tiles
+        candidates.sort((a, b) => a.dist - b.dist || a.col - b.col || a.row - b.row);
+
+        for (const c of candidates) {
+            const t = tileMap.getTile(c.col, c.row);
+            t.ownedBy = uid;
+            building.forestTiles.push({ col: c.col, row: c.row });
+        }
     }
 }

@@ -66,10 +66,10 @@ export class Game extends Phaser.Scene {
                 return;
             }
             const building = this.buildSystem.place(configId, col, row, this.tileMap, this.villagerManager);
-            // Refresh any tiles that became fields
-            if (building.fieldTiles) {
-                for (const ft of building.fieldTiles) {
-                    this.mapRenderer.refreshTile(ft.col, ft.row);
+            // Refresh all tiles in each 2×2 field block
+            for (const ft of building.fieldTiles) {
+                for (const [dc, dr] of [[0,0],[1,0],[0,1],[1,1]]) {
+                    this.mapRenderer.refreshTile(ft.col + dc, ft.row + dr);
                 }
             }
         });

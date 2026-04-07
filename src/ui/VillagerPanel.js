@@ -103,7 +103,8 @@ export class VillagerPanel {
 
         GameEvents.on(EventNames.TILE_SELECTED, ({ col, row }) => {
             const building = buildSystem.getBuildingAt(col, row);
-            if (building && BUILDING_CONFIGS[building.configId].maxVillagers > 0) {
+            const cfg = building && BUILDING_CONFIGS[building.configId];
+            if (building && (cfg.maxVillagers > 0 || cfg.claimsTileType)) {
                 this._currentBuildingUid = building.uid;
                 this._refresh();
                 this._setVisible(true);
@@ -129,9 +130,11 @@ export class VillagerPanel {
         if (!building) return;
         const config  = BUILDING_CONFIGS[building.configId];
         const assigned = building.assignedVillagers;
-        const max      = config.claimsTileType
-            ? (building.fieldTiles.length + building.forestTiles.length)
-            : config.maxVillagers;
+        const max      = config.claimsTileType === 'FOREST'
+            ? Math.floor(building.forestTiles.length / 4)
+            : config.claimsTileType
+                ? building.fieldTiles.length
+                : config.maxVillagers;
 
         this._countLabel.setText(`Workers: ${assigned} / ${max}`);
         this._freeLabel.setText(`Free: ${this._unassigned}`);

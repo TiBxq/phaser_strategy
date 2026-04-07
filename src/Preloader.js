@@ -109,18 +109,18 @@ export class Preloader extends Phaser.Scene {
     // ─── Buildings ───────────────────────────────────────────────────────────
 
     _generateBuildingTextures() {
-        this._makeBuilding('building-house',      48, 52, 0xd4a574, 0xe8c89a, 0xb88550);
-        this._makeBuilding('building-farm',       48, 52, 0x8b6914, 0xa07828, 0x6a5010);
-        this._makeBuilding('building-quarry',     48, 52, 0x777777, 0x999999, 0x555555);
-        this._makeBuilding('building-lumbermill', 48, 52, 0x7b4a2d, 0x9b6a4d, 0x5b2a0d);
-        this._makeBuilding('building-warehouse',  48, 52, 0x5a6a7a, 0x7a8a9a, 0x3a4a5a);
+        this._makeBuilding('building-house',      80, 72, 0xd4a574, 0xe8c89a, 0xb88550);
+        this._makeBuilding('building-farm',       80, 72, 0x8b6914, 0xa07828, 0x6a5010);
+        this._makeBuilding('building-quarry',     80, 72, 0x777777, 0x999999, 0x555555);
+        this._makeBuilding('building-lumbermill', 80, 72, 0x7b4a2d, 0x9b6a4d, 0x5b2a0d);
+        this._makeBuilding('building-warehouse',  80, 72, 0x5a6a7a, 0x7a8a9a, 0x3a4a5a);
     }
 
     _makeBuilding(key, cw, ch, frontColor, topColor, sideColor) {
         const g   = this.make.graphics({ x: 0, y: 0, add: false });
-        const hw  = cw / 2;     // 24
-        const th  = 14;         // top face height (half-diamond)
-        const bh  = ch - th;    // box body height
+        const hw  = cw / 2;
+        const th  = Math.round(cw * 14 / 48);   // top face height, proportional to width
+        const bh  = ch - th;                     // box body height
 
         // Top diamond face
         g.fillStyle(topColor, 1);
