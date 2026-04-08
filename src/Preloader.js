@@ -113,6 +113,7 @@ export class Preloader extends Phaser.Scene {
         this._makeBuilding('building-farm',       80, 72, 0x8b6914, 0xa07828, 0x6a5010);
         this._makeBuilding('building-quarry',     80, 72, 0x777777, 0x999999, 0x555555);
         this._makeBuilding('building-lumbermill', 80, 72, 0x7b4a2d, 0x9b6a4d, 0x5b2a0d);
+        this._makeBuilding('building-market',     80, 72, 0xc8a832, 0xe8c852, 0xa88812);
         this._makeBuilding('building-warehouse',  80, 72, 0x5a6a7a, 0x7a8a9a, 0x3a4a5a);
     }
 

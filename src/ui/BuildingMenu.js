@@ -24,7 +24,7 @@ function formatCost(cost) {
 }
 
 // Displayed order of buildings in the menu
-const MENU_ORDER = ['HOUSE', 'FARM', 'QUARRY', 'LUMBERMILL', 'WAREHOUSE'];
+const MENU_ORDER = ['HOUSE', 'FARM', 'LUMBERMILL', 'QUARRY', 'MARKET', 'WAREHOUSE'];
 
 export class BuildingMenu {
     constructor(scene, resourceSystem) {

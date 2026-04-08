@@ -49,12 +49,20 @@ export class ProductionSystem {
                           resource: config.producesResource, amount: yield_ });
         }
 
-        // Food consumption
+        // Food consumption — 1 per villager, plus 3 per assigned Market merchant
         const totalVillagers = this.villagerManager.total;
         const consumed = { food: 0 };
         if (totalVillagers > 0) {
-            const cost     = totalVillagers * FOOD_COST_PER_VILLAGER;
-            const food     = this.resourceSystem.get('food');
+            let cost = totalVillagers * FOOD_COST_PER_VILLAGER;
+
+            // Market merchants consume an additional 3 food each
+            for (const building of this.buildSystem.placedBuildings.values()) {
+                if (building.configId === 'MARKET' && building.assignedVillagers > 0) {
+                    cost += building.assignedVillagers * 3;
+                }
+            }
+
+            const food      = this.resourceSystem.get('food');
             const toConsume = Math.min(cost, food);
             if (toConsume > 0) {
                 this.resourceSystem.spend({ food: toConsume });
