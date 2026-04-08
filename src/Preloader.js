@@ -41,12 +41,13 @@ export class Preloader extends Phaser.Scene {
 
         for (const [key, frameIndex] of Object.entries(FRAMES)) {
             const src  = this.textures.getFrame('tileset', frameIndex);
-            const dest = this.textures.createCanvas(key, 64, 48);
+            const dest = this.textures.createCanvas(key, 64, 64);
             const ctx  = dest.getContext();
             ctx.imageSmoothingEnabled = false;
-            // Source frame layout: 8px empty (top) | 16px diamond | 8px sides (bottom).
-            // Skip the empty 8px, copy diamond+sides (24px) scaled 2× → 64×48.
-            ctx.drawImage(src.source.image, src.cutX, src.cutY + 8, 32, 24, 0, 0, 64, 48);
+            // Full 32×32 source scaled 2× → 64×64.
+            // Layout: 8px decoration (top) | 16px diamond | 8px sides | (bottom flush).
+            // The hit polygon in MapRenderer is offset by 16px to match the diamond position.
+            ctx.drawImage(src.source.image, src.cutX, src.cutY, 32, 32, 0, 0, 64, 64);
             dest.refresh();
         }
     }

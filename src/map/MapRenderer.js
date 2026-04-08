@@ -84,15 +84,16 @@ export class MapRenderer {
             // Store col/row on the sprite for fast event handler reads
             img.setData({ col, row });
 
-            // Diamond-shaped hit polygon (relative to the image's origin top-left)
-            // The diamond top face spans the full tile width × height
-            const hw = TILE_W / 2;
-            const hh = TILE_H / 2;
+            // Diamond-shaped hit polygon in the image's local coordinate space.
+            // Tile textures are 64×64: top 16px is decoration, diamond occupies y=16–47.
+            const hw   = TILE_W / 2;
+            const hh   = TILE_H / 2;
+            const deco = TILE_DEPTH; // 16px decoration above the diamond (8px source × 2)
             const poly = new Phaser.Geom.Polygon([
-                hw, 0,
-                TILE_W, hh,
-                hw, TILE_H,
-                0, hh,
+                hw,     deco,
+                TILE_W, hh + deco,
+                hw,     TILE_H + deco,
+                0,      hh + deco,
             ]);
             img.setInteractive(poly, Phaser.Geom.Polygon.Contains);
 
