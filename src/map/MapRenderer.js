@@ -6,7 +6,8 @@ import { DEPTH_TILE_HOVER, LAYER_TILE_SELECT } from '../config/DepthLayers.js';
 
 export const TILE_W = 64;
 export const TILE_H = 32;
-// Extra height for the depth faces drawn below the diamond
+// Extra height for the depth faces drawn below the diamond.
+// Spritesheet source: 16px diamond + 8px sides, scaled 2× → 32px diamond + 16px sides.
 export const TILE_DEPTH = 16;
 
 // World origin — top corner of the map diamond

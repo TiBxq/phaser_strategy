@@ -6,28 +6,59 @@ export class Preloader extends Phaser.Scene {
     }
 
     preload() {
-        this._generateTileTextures();
+        // Load the tile spritesheet — frames are created in create() once it's available
+        this.load.spritesheet('tileset', 'assets/tiles/spritesheet.png', {
+            frameWidth:  32,
+            frameHeight: 32,
+        });
+
         this._generateBuildingTextures();
         this._generateUITextures();
     }
 
     create() {
+        this._generateTileTexturesFromSpritesheet();
+        this._generateTileOverlays();
         this.scene.start('Game');
     }
 
     // ─── Tiles ───────────────────────────────────────────────────────────────
 
-    _generateTileTextures() {
-        const W  = 64;      // diamond width
-        const H  = 32;      // diamond height (top face)
-        const D  = 16;      // depth of side faces
-        const CW = W;
-        const CH = H + D;
+    /**
+     * Copy spritesheet frames into named CanvasTextures, scaled 2× (32×32 → 64×64).
+     * At 2× the 32px-wide diamond top face becomes 64px wide × 32px tall,
+     * matching TILE_W and TILE_H exactly.
+     *
+     * Frame index = row * 11 + col  (11 columns, 32px each)
+     */
+    _generateTileTexturesFromSpritesheet() {
+        const FRAMES = {
+            'tile-grass':  22,   // row 2 — green grass
+            'tile-forest': 55,   // row 5 — dense shrubs
+            'tile-rocks':  77,   // row 7 — rocky outcrops
+            'tile-field':  0,    // row 0 — dark soil (tilled farmland)
+        };
 
-        this._makeTile('tile-grass',  CW, CH, 0x4a7c59, 0x3a6349, 0x2d5a27);
-        this._makeTile('tile-forest', CW, CH, 0x2d5a27, 0x1e4219, 0x142e11);
-        this._makeTile('tile-rocks',  CW, CH, 0x888888, 0x666666, 0x444444);
-        this._makeTile('tile-field',  CW, CH, 0xc8a96e, 0xa8894e, 0x88692e);
+        for (const [key, frameIndex] of Object.entries(FRAMES)) {
+            const src  = this.textures.getFrame('tileset', frameIndex);
+            const dest = this.textures.createCanvas(key, 64, 48);
+            const ctx  = dest.getContext();
+            ctx.imageSmoothingEnabled = false;
+            // Source frame layout: 8px empty (top) | 16px diamond | 8px sides (bottom).
+            // Skip the empty 8px, copy diamond+sides (24px) scaled 2× → 64×48.
+            ctx.drawImage(src.source.image, src.cutX, src.cutY + 8, 32, 24, 0, 0, 64, 48);
+            dest.refresh();
+        }
+    }
+
+    /**
+     * Generate overlay textures (hover highlight, selection, ghost, worker).
+     * These must be 64×64 to match the 2× scaled tile sprites.
+     * TILE_H=32, effective TILE_DEPTH=32 → CH=64.
+     */
+    _generateTileOverlays() {
+        const CW = 64;
+        const CH = 48;   // 32 top face + 16 depth (matches 64×48 tile textures)
 
         this._makeHighlight('tile-highlight',    CW, CH, 0xffee00, 0.45);
         this._makeHighlight('tile-selected',     CW, CH, 0x44aaff, 0.65);
@@ -35,64 +66,10 @@ export class Preloader extends Phaser.Scene {
         this._makeWorkerOverlay('tile-worker-overlay', CW, CH);
     }
 
-    _makeTile(key, cw, ch, topColor, leftColor, rightColor) {
-        const g  = this.make.graphics({ x: 0, y: 0, add: false });
-        const hw = cw / 2;
-        const hh = (ch - 16) / 2; // half of diamond top face height = 8
-
-        // Top diamond face
-        g.fillStyle(topColor, 1);
-        g.fillPoints([
-            { x: hw, y: 0 },
-            { x: cw, y: hh },
-            { x: hw, y: hh * 2 },
-            { x: 0,  y: hh },
-        ], true);
-
-        // Left depth face
-        g.fillStyle(leftColor, 1);
-        g.fillPoints([
-            { x: 0,  y: hh },
-            { x: hw, y: hh * 2 },
-            { x: hw, y: ch },
-            { x: 0,  y: hh + 16 },
-        ], true);
-
-        // Right depth face
-        g.fillStyle(rightColor, 1);
-        g.fillPoints([
-            { x: hw, y: hh * 2 },
-            { x: cw, y: hh },
-            { x: cw, y: hh + 16 },
-            { x: hw, y: ch },
-        ], true);
-
-        g.generateTexture(key, cw, ch);
-        g.destroy();
-    }
-
-    _makeWorkerOverlay(key, cw, ch) {
-        const g  = this.make.graphics({ x: 0, y: 0, add: false });
-        const hw = cw / 2;  // 32 — horizontal center of tile top face
-        const cy = (ch - 16) / 2; // 8 — vertical center of top face
-
-        // Person centered on the top diamond face (~hw, cy)
-        g.fillStyle(0xffcc88, 1);
-        g.fillCircle(hw, cy - 3, 4);   // head
-        g.fillStyle(0x4466aa, 1);
-        g.fillRect(hw - 4, cy + 1, 8, 6); // body
-        g.lineStyle(1, 0x000000, 0.7);
-        g.strokeCircle(hw, cy - 3, 4);
-        g.strokeRect(hw - 4, cy + 1, 8, 6);
-
-        g.generateTexture(key, cw, ch);
-        g.destroy();
-    }
-
     _makeHighlight(key, cw, ch, color, alpha) {
         const g  = this.make.graphics({ x: 0, y: 0, add: false });
         const hw = cw / 2;
-        const hh = (ch - 16) / 2;
+        const hh = (ch - 16) / 2;   // TILE_H/2 = 16 (ch=48, depth=16)
 
         g.fillStyle(color, alpha);
         g.fillPoints([
@@ -101,6 +78,24 @@ export class Preloader extends Phaser.Scene {
             { x: hw, y: hh * 2 },
             { x: 0,  y: hh },
         ], true);
+
+        g.generateTexture(key, cw, ch);
+        g.destroy();
+    }
+
+    _makeWorkerOverlay(key, cw, ch) {
+        const g  = this.make.graphics({ x: 0, y: 0, add: false });
+        const hw = cw / 2;           // 32 — horizontal centre of tile top face
+        const cy = (ch - 16) / 2;   // 16 — vertical centre of top face (depth=16)
+
+        // Person centred on the top diamond face
+        g.fillStyle(0xffcc88, 1);
+        g.fillCircle(hw, cy - 3, 4);   // head
+        g.fillStyle(0x4466aa, 1);
+        g.fillRect(hw - 4, cy + 1, 8, 6); // body
+        g.lineStyle(1, 0x000000, 0.7);
+        g.strokeCircle(hw, cy - 3, 4);
+        g.strokeRect(hw - 4, cy + 1, 8, 6);
 
         g.generateTexture(key, cw, ch);
         g.destroy();
