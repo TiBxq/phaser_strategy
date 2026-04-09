@@ -47,8 +47,8 @@ export class Preloader extends Phaser.Scene {
         // Spritesheet layout: frame index = row * SHEET_COLS + col, each frame 32×32.
         const SHEET_COLS     = 11;
         const FRAME_GRASS    = 2 * SHEET_COLS;   // 22 — row 2, col 0
-        const FRAME_FOREST   = 5 * SHEET_COLS;   // 55 — row 5, col 0
-        const FRAME_ROCKS    = 7 * SHEET_COLS;   // 77 — row 7, col 0
+        const FRAME_FOREST   = 3 * SHEET_COLS + 3;   // 55 — row 5, col 0
+        const FRAME_ROCKS    = 5 * SHEET_COLS + 6;   // 77 — row 7, col 0
         const FRAME_FIELD    = 0;                 //  0 — row 0, col 0
 
         // Source frame layout (32×32 px, 1× scale):
