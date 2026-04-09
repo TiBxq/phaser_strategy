@@ -39,5 +39,8 @@ export const DEPTH_SELECTION_OVERLAY = ABOVE_MAP + 4;
 /**
  * ── UI scene depths ───────────────────────────────────────────────────────────
  * The UI runs as a separate Phaser scene (setScrollFactor(0)), so its depths
- * are independent of the game camera and don't need constants here.
+ * are independent of the game camera depth bands above.
  */
+export const DEPTH_UI_BACKGROUND = 1000;  // panel / bar backgrounds
+export const DEPTH_UI_ELEMENT    = 1001;  // buttons, icon images
+export const DEPTH_UI_TEXT       = 1002;  // text labels rendered above buttons

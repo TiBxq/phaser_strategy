@@ -22,12 +22,16 @@ export class Preloader extends Phaser.Scene {
         this.load.image('building-market',     'assets/buildings/market.png');
         this.load.image('building-warehouse',  'assets/buildings/warehouse.png');
 
+        // UI icon spritesheet (16×16 frames)
+        this.load.image('icons-sheet', 'assets/ui/icons/items_sheet.png');
+
         this._generateUITextures();
     }
 
     create() {
         this._generateTileTexturesFromSpritesheet();
         this._generateTileOverlays();
+        this._generateIconTextures();
         this.scene.start('Game');
     }
 
@@ -166,12 +170,24 @@ export class Preloader extends Phaser.Scene {
 
     // ─── UI ──────────────────────────────────────────────────────────────────
 
-    _generateUITextures() {
-        this._makeResourceIcon('icon-food',  0x44bb44);
-        this._makeResourceIcon('icon-wood',  0x885522);
-        this._makeResourceIcon('icon-stone', 0x888888);
-        this._makeResourceIcon('icon-money', 0xddcc00);
+    _generateIconTextures() {
+        const src = this.textures.get('icons-sheet').getSourceImage();
+        const ICONS = [
+            { key: 'icon-food',  col:  7, row:  9 },
+            { key: 'icon-wood',  col: 19, row: 27 },
+            { key: 'icon-stone', col: 10, row: 31 },
+            { key: 'icon-money', col: 10, row: 32 },
+        ];
+        for (const { key, col, row } of ICONS) {
+            const dest = this.textures.createCanvas(key, 16, 16);
+            const ctx  = dest.getContext();
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(src, col * 16, row * 16, 16, 16, 0, 0, 16, 16);
+            dest.refresh();
+        }
+    }
 
+    _generateUITextures() {
         this._makePanel('ui-topbar',     960,  40, 0x08081a, 0.92);
         this._makePanel('ui-bottombar',  960,  40, 0x08081a, 0.92);
         this._makePanel('ui-sidepanel',  200, 560, 0x0c0c20, 0.92);
@@ -187,16 +203,6 @@ export class Preloader extends Phaser.Scene {
 
         this._makeVillagerIcon('icon-villager');
         this._makeVillagerSprite('sprite-villager');
-    }
-
-    _makeResourceIcon(key, color) {
-        const g = this.make.graphics({ x: 0, y: 0, add: false });
-        g.fillStyle(color, 1);
-        g.fillRect(2, 2, 12, 12);
-        g.lineStyle(1, 0x000000, 0.5);
-        g.strokeRect(2, 2, 12, 12);
-        g.generateTexture(key, 16, 16);
-        g.destroy();
     }
 
     _makePanel(key, w, h, color, alpha) {
