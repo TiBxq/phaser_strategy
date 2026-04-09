@@ -19,9 +19,10 @@ const PX = 762;   // panel left edge
 const PY = 50;    // panel top edge
 
 export class TileInfoPanel {
-    constructor(scene, buildSystem) {
+    constructor(scene, buildSystem, tileMap) {
         this.scene       = scene;
         this.buildSystem = buildSystem;
+        this.tileMap     = tileMap;
 
         // Background (200×200 — VillagerPanel sits below at PY+200)
         this._bg = scene.add.image(PX, PY, 'ui-sidepanel')
@@ -51,6 +52,22 @@ export class TileInfoPanel {
                 this._show(this._currentTile.col, this._currentTile.row, this._currentTile.tile);
             }
         });
+
+        GameEvents.on(EventNames.PRODUCTION_TICK, () => {
+            if (!this._currentTile) return;
+            const b = this.buildSystem.getBuildingAt(this._currentTile.col, this._currentTile.row);
+            if (b?.configId === 'LUMBERMILL' || b?.configId === 'QUARRY') {
+                this._show(this._currentTile.col, this._currentTile.row, this._currentTile.tile);
+            }
+        });
+
+        GameEvents.on(EventNames.TILE_DEPLETED, ({ buildingUid }) => {
+            if (!this._currentTile) return;
+            const b = this.buildSystem.getBuildingAt(this._currentTile.col, this._currentTile.row);
+            if (b?.uid === buildingUid) {
+                this._show(this._currentTile.col, this._currentTile.row, this._currentTile.tile);
+            }
+        });
     }
 
     _show(col, row, tile) {
@@ -76,6 +93,16 @@ export class TileInfoPanel {
             }
             if (building.fieldTiles && building.fieldTiles.length > 0) {
                 body += `\nFields: ${building.fieldTiles.length}`;
+            }
+            if (building.configId === 'LUMBERMILL') {
+                const total = building.forestTiles.reduce(
+                    (s, ft) => s + (this.tileMap.getTile(ft.col, ft.row)?.resources ?? 0), 0);
+                body += `\nWood left: ${total}`;
+            }
+            if (building.configId === 'QUARRY') {
+                const total = building.rocksTiles.reduce(
+                    (s, ft) => s + (this.tileMap.getTile(ft.col, ft.row)?.resources ?? 0), 0);
+                body += `\nStone left: ${total}`;
             }
             this._bodyText.setText(body);
         } else {

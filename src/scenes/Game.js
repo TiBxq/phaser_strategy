@@ -22,15 +22,17 @@ export class Game extends Phaser.Scene {
         this.resourceSystem  = new ResourceSystem();
         this.buildSystem     = new BuildSystem(this.resourceSystem);
         this.villagerManager = new VillagerManager();
+
+        // ── Map ────────────────────────────────────────────────────────────────
+        this.tileMap         = new TileMap().generate();
+
         this.productionSystem = new ProductionSystem(
             this.time,
             this.resourceSystem,
             this.buildSystem,
             this.villagerManager,
+            this.tileMap,
         );
-
-        // ── Map ────────────────────────────────────────────────────────────────
-        this.tileMap         = new TileMap().generate();
         this.mapRenderer      = new MapRenderer(this, this.tileMap);
         this.buildingRenderer = new BuildingRenderer(this, this.tileMap, this.buildSystem);
         this.villagerRenderer = new VillagerRenderer(this, this.tileMap);
@@ -57,6 +59,10 @@ export class Game extends Phaser.Scene {
             this.inputMode            = 'idle';
             this.pendingBuildConfigId = null;
             this.buildingRenderer.hideGhost();
+        });
+
+        GameEvents.on(EventNames.TILE_DEPLETED, ({ col, row, isBuildingFootprint }) => {
+            if (!isBuildingFootprint) this.mapRenderer.refreshTile(col, row);
         });
 
         GameEvents.on(EventNames.BUILD_PLACEMENT_REQUEST, ({ configId, col, row }) => {

@@ -37,7 +37,8 @@ export class TileMap {
                 // If 3 or more neighbours share the same non-GRASS type, absorb
                 for (const [type, count] of Object.entries(counts)) {
                     if (type !== tile.type && count >= 3) {
-                        tile.type = type;
+                        tile.type      = type;
+                        tile.resources = TILE_TYPES[type].initialResources;
                         break;
                     }
                 }
@@ -96,6 +97,7 @@ export class TileMap {
             ownedBy: null,   // uid of building that claimed this tile for production
             height: 0,       // elevation 0–3
             isRamp: false,   // true when GRASS tile transitions height down to a neighbor
+            resources: TILE_TYPES[typeId].initialResources,  // remaining harvestable units
         };
     }
 

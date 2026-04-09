@@ -4,18 +4,21 @@ export const TILE_TYPES = Object.freeze({
         weight: 60,
         textureKey: 'tile-grass',
         buildable: true,
+        initialResources: 0,
     },
     FOREST: {
         id: 'FOREST',
         weight: 25,
         textureKey: 'tile-forest',
         buildable: false,
+        initialResources: 50,
     },
     ROCKS: {
         id: 'ROCKS',
         weight: 15,
         textureKey: 'tile-rocks',
         buildable: false,
+        initialResources: 100,
     },
 });
 

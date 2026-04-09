@@ -21,7 +21,7 @@ export class UI extends Phaser.Scene {
         this.buildingMenu = new BuildingMenu(this, gameScene.resourceSystem);
         this.buildModeIndicator = new BuildModeIndicator(this);
         this.notificationManager = new NotificationManager(this);
-        this.tileInfoPanel = new TileInfoPanel(this, gameScene.buildSystem);
+        this.tileInfoPanel = new TileInfoPanel(this, gameScene.buildSystem, gameScene.tileMap);
         this.villagerPanel = new VillagerPanel(this, gameScene.buildSystem, gameScene.villagerManager);
 
         // Wire villager assignment events to VillagerManager

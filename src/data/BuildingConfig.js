@@ -16,7 +16,7 @@
  *   maxVillagers        — max villagers (static cap; tile-based buildings use dynamic cap)
  *   villagerCapacity    — how many villagers this building HOUSES (House only)
  *   onPlace             — string token dispatched by BuildSystem after placement:
- *                         null | 'spawnVillager' | 'spawnFields' | 'claimForest' | 'increaseStorageCap'
+ *                         null | 'spawnVillager' | 'spawnFields' | 'claimForest' | 'increaseStorageCap' | 'initRocksTiles'
  *   description         — short text shown in TileInfoPanel
  */
 export const BUILDING_CONFIGS = Object.freeze({
@@ -84,8 +84,8 @@ export const BUILDING_CONFIGS = Object.freeze({
         productionPerVillager: 2,
         maxVillagers: 3,
         villagerCapacity: 0,
-        onPlace: null,
-        description: '2×2 building on rocks. Each villager → 2 stone/tick.',
+        onPlace: 'initRocksTiles',
+        description: '2×2 building on rocks. Mines the 4 tiles it occupies (100 stone each). Up to 3 workers → 2 stone/tick each.',
     },
 
     MARKET: {

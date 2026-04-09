@@ -43,4 +43,8 @@ export const EventNames = Object.freeze({
 
     // Display a transient notification message to the player
     SHOW_NOTIFICATION: 'ui:notification',   // payload: { message: string }
+
+    // A resource tile (FOREST or ROCKS) was fully depleted by a production building
+    // payload: { col, row, buildingUid, isBuildingFootprint }
+    TILE_DEPLETED: 'tile:depleted',
 });

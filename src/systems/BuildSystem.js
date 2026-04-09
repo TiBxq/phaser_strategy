@@ -80,6 +80,7 @@ export class BuildSystem {
             assignedVillagers: 0,
             fieldTiles: [],    // block anchors {col, row} for Farm 2×2 field blocks
             forestTiles: [],   // individual FOREST tile positions for Lumbermill
+            rocksTiles: [],    // footprint ROCKS tile positions for Quarry
         };
 
         // Mark all 4 footprint tiles as occupied
@@ -99,6 +100,12 @@ export class BuildSystem {
 
             case 'claimForest':
                 this._claimAllForestInRadius(tileMap, col, row, uid, building);
+                break;
+
+            case 'initRocksTiles':
+                for (const [dc, dr] of FOOTPRINT) {
+                    building.rocksTiles.push({ col: col + dc, row: row + dr });
+                }
                 break;
 
             case 'increaseStorageCap':

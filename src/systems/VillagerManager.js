@@ -74,6 +74,11 @@ export class VillagerManager {
         return this.unassigned;
     }
 
+    /** Called by ProductionSystem when resource tiles deplete and caps may change. */
+    notifyChanged() {
+        this._emit();
+    }
+
     _emit() {
         GameEvents.emit(EventNames.VILLAGERS_CHANGED, {
             total:       this.total,
