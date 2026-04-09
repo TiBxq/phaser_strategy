@@ -14,7 +14,14 @@ export class Preloader extends Phaser.Scene {
             frameHeight: 32,
         });
 
-        this._generateBuildingTextures();
+        // Building sprites — 128×96 px each (2×2 tile footprint, 32px top decoration)
+        this.load.image('building-house',      'assets/buildings/house_lvl1.png');
+        this.load.image('building-farm',       'assets/buildings/farm.png');
+        this.load.image('building-lumbermill', 'assets/buildings/lumbermill.png');
+        this.load.image('building-quarry',     'assets/buildings/quarry.png');
+        this.load.image('building-market',     'assets/buildings/market.png');
+        this.load.image('building-warehouse',  'assets/buildings/warehouse.png');
+
         this._generateUITextures();
     }
 
@@ -152,65 +159,6 @@ export class Preloader extends Phaser.Scene {
         g.lineStyle(1, 0x000000, 0.7);
         g.strokeCircle(hw, cy - 3, 4);
         g.strokeRect(hw - 4, cy + 1, 8, 6);
-
-        g.generateTexture(key, cw, ch);
-        g.destroy();
-    }
-
-    // ─── Buildings ───────────────────────────────────────────────────────────
-
-    _generateBuildingTextures() {
-        this._makeBuilding('building-house',      80, 72, 0xd4a574, 0xe8c89a, 0xb88550);
-        this._makeBuilding('building-farm',       80, 72, 0x8b6914, 0xa07828, 0x6a5010);
-        this._makeBuilding('building-quarry',     80, 72, 0x777777, 0x999999, 0x555555);
-        this._makeBuilding('building-lumbermill', 80, 72, 0x7b4a2d, 0x9b6a4d, 0x5b2a0d);
-        this._makeBuilding('building-market',     80, 72, 0xc8a832, 0xe8c852, 0xa88812);
-        this._makeBuilding('building-warehouse',  80, 72, 0x5a6a7a, 0x7a8a9a, 0x3a4a5a);
-    }
-
-    _makeBuilding(key, cw, ch, frontColor, topColor, sideColor) {
-        const g   = this.make.graphics({ x: 0, y: 0, add: false });
-        const hw  = cw / 2;
-        const th  = Math.round(cw * 14 / 48);   // top face height, proportional to width
-        const bh  = ch - th;                     // box body height
-
-        // Top diamond face
-        g.fillStyle(topColor, 1);
-        g.fillPoints([
-            { x: hw, y: 0 },
-            { x: cw, y: th / 2 },
-            { x: hw, y: th },
-            { x: 0,  y: th / 2 },
-        ], true);
-
-        // Left face
-        g.fillStyle(frontColor, 1);
-        g.fillPoints([
-            { x: 0,  y: th / 2 },
-            { x: hw, y: th },
-            { x: hw, y: th + bh },
-            { x: 0,  y: th / 2 + bh },
-        ], true);
-
-        // Right face
-        g.fillStyle(sideColor, 1);
-        g.fillPoints([
-            { x: hw, y: th },
-            { x: cw, y: th / 2 },
-            { x: cw, y: th / 2 + bh },
-            { x: hw, y: th + bh },
-        ], true);
-
-        // Outline
-        g.lineStyle(1, 0x000000, 0.35);
-        g.strokePoints([
-            { x: hw, y: 0 },
-            { x: cw, y: th / 2 },
-            { x: cw, y: th / 2 + bh },
-            { x: hw, y: th + bh },
-            { x: 0,  y: th / 2 + bh },
-            { x: 0,  y: th / 2 },
-        ], true);
 
         g.generateTexture(key, cw, ch);
         g.destroy();

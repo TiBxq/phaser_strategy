@@ -1,5 +1,5 @@
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
-import { tileToWorld, TILE_DEPTH } from './MapRenderer.js';
+import { tileToWorld, TILE_DEPTH, TILE_H } from './MapRenderer.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 import {
