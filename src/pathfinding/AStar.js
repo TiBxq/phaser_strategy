@@ -5,9 +5,13 @@
  * @param {{col: number, row: number}} start
  * @param {{col: number, row: number}} goal
  * @param {(tile: object) => boolean} isWalkable
+ * @param {((from: object, to: object) => number) | null} getMoveCost
+ *   Optional cost function for moving between adjacent tiles.
+ *   Return Infinity to treat the edge as impassable.
+ *   Defaults to a uniform cost of 1 when null.
  * @returns {{col: number, row: number}[]}  Path from start to goal inclusive, or [] if unreachable.
  */
-export function aStar(tileMap, start, goal, isWalkable) {
+export function aStar(tileMap, start, goal, isWalkable, getMoveCost = null) {
     if (start.col === goal.col && start.row === goal.row) return [{ col: start.col, row: start.row }];
 
     const key = (c, r) => `${c},${r}`;
@@ -53,7 +57,11 @@ export function aStar(tileMap, start, goal, isWalkable) {
             const tile = tileMap.getTile(nc, nr);
             if (!tile || !isWalkable(tile)) continue;
 
-            const g        = current.g + 1;
+            const currentTile = tileMap.getTile(current.col, current.row);
+            const stepCost    = getMoveCost ? getMoveCost(currentTile, tile) : 1;
+            if (!isFinite(stepCost)) continue;
+
+            const g        = current.g + stepCost;
             const existing = open.get(nk);
             if (!existing || g < existing.g) {
                 open.set(nk, {

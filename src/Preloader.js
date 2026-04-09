@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { TILE_W, TILE_H, TILE_DEPTH, HEIGHT_STEP } from './map/MapRenderer.js';
+import { MAX_TILE_HEIGHT } from './map/TileMap.js';
 
 export class Preloader extends Phaser.Scene {
     constructor() {
@@ -25,31 +27,84 @@ export class Preloader extends Phaser.Scene {
     // ─── Tiles ───────────────────────────────────────────────────────────────
 
     /**
-     * Copy spritesheet frames into named CanvasTextures, scaled 2× (32×32 → 64×64).
-     * At 2× the 32px-wide diamond top face becomes 64px wide × 32px tall,
-     * matching TILE_W and TILE_H exactly.
+     * Copy spritesheet frames into named CanvasTextures scaled 2×, generating
+     * height variants (h0–h3) for each terrain type.
+     *
+     * Source frame layout (32×32):
+     *   y=0..7   — 8px decoration above diamond
+     *   y=8..23  — 16px diamond face
+     *   y=24..31 — 8px side walls (isometric cube faces)
+     *
+     * At 2× the canvas is 64px wide.  Height variant h0 is 64px tall (normal).
+     * Each additional height level adds a 16px repetition of the side-wall band,
+     * growing the canvas downward so the cliff face fills the gap to ground level.
+     * The sprite anchor remains at the canvas bottom, so the diamond visually
+     * rises by HEIGHT_STEP (16px) for each level.
      *
      * Frame index = row * 11 + col  (11 columns, 32px each)
      */
     _generateTileTexturesFromSpritesheet() {
-        const FRAMES = {
-            'tile-grass':  22,   // row 2 — green grass
-            'tile-forest': 55,   // row 5 — dense shrubs
-            'tile-rocks':  77,   // row 7 — rocky outcrops
-            'tile-field':  0,    // row 0 — dark soil (tilled farmland)
+        // Spritesheet layout: frame index = row * SHEET_COLS + col, each frame 32×32.
+        const SHEET_COLS     = 11;
+        const FRAME_GRASS    = 2 * SHEET_COLS;   // 22 — row 2, col 0
+        const FRAME_FOREST   = 5 * SHEET_COLS;   // 55 — row 5, col 0
+        const FRAME_ROCKS    = 7 * SHEET_COLS;   // 77 — row 7, col 0
+        const FRAME_FIELD    = 0;                 //  0 — row 0, col 0
+
+        // Source frame layout (32×32 px, 1× scale):
+        //   y =  0.. 7 — 8px decoration above diamond
+        //   y =  8..23 — 16px diamond face
+        //   y = 24..31 — 8px side-wall band (cliff face, tiled for height)
+        const SRC_FRAME_SIZE  = 32;    // source frame width and height in px
+        const SRC_WALL_OFFSET = 24;    // y-offset of the wall band within a source frame
+        const SRC_WALL_HEIGHT = 8;     // height of the wall band in the source frame
+
+        const TERRAIN_FRAMES = {
+            'tile-grass':  FRAME_GRASS,
+            'tile-forest': FRAME_FOREST,
+            'tile-rocks':  FRAME_ROCKS,
         };
 
-        for (const [key, frameIndex] of Object.entries(FRAMES)) {
-            const src  = this.textures.getFrame('tileset', frameIndex);
-            const dest = this.textures.createCanvas(key, 64, 64);
-            const ctx  = dest.getContext();
-            ctx.imageSmoothingEnabled = false;
-            // Full 32×32 source scaled 2× → 64×64.
-            // Layout: 8px decoration (top) | 16px diamond | 8px sides | (bottom flush).
-            // The hit polygon in MapRenderer is offset by 16px to match the diamond position.
-            ctx.drawImage(src.source.image, src.cutX, src.cutY, 32, 32, 0, 0, 64, 64);
-            dest.refresh();
+        for (const [base, frameIndex] of Object.entries(TERRAIN_FRAMES)) {
+            const src = this.textures.getFrame('tileset', frameIndex);
+
+            for (let h = 0; h <= MAX_TILE_HEIGHT; h++) {
+                const canvasH = TILE_W + h * HEIGHT_STEP;
+                const dest    = this.textures.createCanvas(`${base}-h${h}`, TILE_W, canvasH);
+                const ctx     = dest.getContext();
+                ctx.imageSmoothingEnabled = false;
+
+                // Draw full source frame at 2× into the top TILE_W×TILE_W px of the canvas.
+                ctx.drawImage(
+                    src.source.image,
+                    src.cutX, src.cutY, SRC_FRAME_SIZE, SRC_FRAME_SIZE,
+                    0, 0, TILE_W, TILE_W,
+                );
+
+                // Repeat the side-wall band for each extra height level.
+                for (let k = 0; k < h; k++) {
+                    ctx.drawImage(
+                        src.source.image,
+                        src.cutX, src.cutY + SRC_WALL_OFFSET, SRC_FRAME_SIZE, SRC_WALL_HEIGHT,
+                        0, TILE_W + k * HEIGHT_STEP, TILE_W, HEIGHT_STEP,
+                    );
+                }
+
+                dest.refresh();
+            }
         }
+
+        // Field tile — always flat (height 0), no variants needed.
+        const fieldSrc  = this.textures.getFrame('tileset', FRAME_FIELD);
+        const fieldDest = this.textures.createCanvas('tile-field', TILE_W, TILE_W);
+        const fieldCtx  = fieldDest.getContext();
+        fieldCtx.imageSmoothingEnabled = false;
+        fieldCtx.drawImage(
+            fieldSrc.source.image,
+            fieldSrc.cutX, fieldSrc.cutY, SRC_FRAME_SIZE, SRC_FRAME_SIZE,
+            0, 0, TILE_W, TILE_W,
+        );
+        fieldDest.refresh();
     }
 
     /**
@@ -58,8 +113,8 @@ export class Preloader extends Phaser.Scene {
      * TILE_H=32, effective TILE_DEPTH=32 → CH=64.
      */
     _generateTileOverlays() {
-        const CW = 64;
-        const CH = 48;   // 32 top face + 16 depth (matches 64×48 tile textures)
+        const CW = TILE_W;              // canvas width = isometric tile width
+        const CH = TILE_H + TILE_DEPTH; // canvas height = diamond face + cliff depth
 
         this._makeHighlight('tile-highlight',    CW, CH, 0xffee00, 0.45);
         this._makeHighlight('tile-selected',     CW, CH, 0x44aaff, 0.65);
@@ -70,7 +125,7 @@ export class Preloader extends Phaser.Scene {
     _makeHighlight(key, cw, ch, color, alpha) {
         const g  = this.make.graphics({ x: 0, y: 0, add: false });
         const hw = cw / 2;
-        const hh = (ch - 16) / 2;   // TILE_H/2 = 16 (ch=48, depth=16)
+        const hh = (ch - TILE_DEPTH) / 2;   // half the diamond face height
 
         g.fillStyle(color, alpha);
         g.fillPoints([
@@ -86,8 +141,8 @@ export class Preloader extends Phaser.Scene {
 
     _makeWorkerOverlay(key, cw, ch) {
         const g  = this.make.graphics({ x: 0, y: 0, add: false });
-        const hw = cw / 2;           // 32 — horizontal centre of tile top face
-        const cy = (ch - 16) / 2;   // 16 — vertical centre of top face (depth=16)
+        const hw = cw / 2;                   // horizontal centre of tile top face
+        const cy = (ch - TILE_DEPTH) / 2;   // vertical centre of top face
 
         // Person centred on the top diamond face
         g.fillStyle(0xffcc88, 1);

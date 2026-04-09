@@ -1,7 +1,7 @@
 import { tileToWorld, TILE_H } from '../map/MapRenderer.js';
 import { aStar } from '../pathfinding/AStar.js';
-import { isWalkable, randomWalkableTile } from './walkable.js';
-import { LAYER_VILLAGER } from '../config/DepthLayers.js';
+import { isWalkable, randomWalkableTile, heightMoveCost } from './walkable.js';
+import { LAYER_VILLAGER, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
 
 const MOVE_DURATION = 550;   // ms per tile step
 const IDLE_MIN_MS   = 400;
@@ -17,10 +17,12 @@ export class VillagerEntity {
         this._path     = [];   // full path for the current wander goal
         this._pathStep = 0;    // index of the next step to walk
 
-        const { x, y } = tileToWorld(col, row);
+        const spawnTile = tileMap.getTile(col, row);
+        const spawnH    = spawnTile ? spawnTile.height : 0;
+        const { x, y } = tileToWorld(col, row, spawnH);
         this._sprite = scene.add.image(x, y - TILE_H, 'sprite-villager')
             .setOrigin(0.5, 1)
-            .setDepth(col + row + LAYER_VILLAGER);
+            .setDepth(col + row + spawnH * HEIGHT_DEPTH_BIAS + LAYER_VILLAGER);
 
         // Stagger start so villagers don't all move in lockstep
         this._scheduleWander();
@@ -57,6 +59,7 @@ export class VillagerEntity {
             { col: this.col, row: this.row },
             { col: dest.col, row: dest.row },
             isWalkable,
+            heightMoveCost,
         );
 
         if (path.length < 2) {
@@ -78,14 +81,18 @@ export class VillagerEntity {
             return;
         }
 
-        const next     = this._path[this._pathStep];
-        const { x, y } = tileToWorld(next.col, next.row);
+        const next      = this._path[this._pathStep];
+        const nextTile  = this._tileMap.getTile(next.col, next.row);
+        const nextH     = nextTile ? nextTile.height : 0;
+        const currTile  = this._tileMap.getTile(this.col, this.row);
+        const currH     = currTile ? currTile.height : 0;
+        const { x, y } = tileToWorld(next.col, next.row, nextH);
 
         // Use the higher depth of source and destination during movement so the
         // sprite is never hidden behind its source tile when walking toward the
         // viewer (NW/NE — decreasing col+row sum). Settle to exact dest depth on arrival.
-        const srcDepth = this.col + this.row + 0.3;
-        const dstDepth = next.col + next.row + 0.3;
+        const srcDepth = this.col + this.row + currH * HEIGHT_DEPTH_BIAS + LAYER_VILLAGER;
+        const dstDepth = next.col + next.row + nextH * HEIGHT_DEPTH_BIAS + LAYER_VILLAGER;
         this._sprite.setDepth(Math.max(srcDepth, dstDepth));
 
         this._scene.tweens.add({

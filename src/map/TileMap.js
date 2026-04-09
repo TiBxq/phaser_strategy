@@ -1,6 +1,12 @@
 import { TILE_TYPE_POOL, TILE_TYPES } from '../data/TileTypes.js';
 
-export const MAP_SIZE = 20;
+export const MAP_SIZE       = 20;
+export const MAX_TILE_HEIGHT = 3;   // maximum elevation level (0 = flat, 3 = peak)
+
+// Heightmap generation tuning
+const HILL_RADIUS    = 4;   // Manhattan radius of each dome hill
+const HILL_COUNT_MIN = 3;   // minimum number of hills per map
+const HILL_COUNT_MAX = 5;   // maximum number of hills per map
 
 export class TileMap {
     constructor() {
@@ -37,6 +43,12 @@ export class TileMap {
                 }
             }
         }
+
+        // Phase 3: heightmap
+        this._generateHeightmap();
+
+        // Phase 4: ramp placement
+        this._placeRamps();
 
         return this;
     }
@@ -82,6 +94,63 @@ export class TileMap {
             buildingId: null,
             isField: false,
             ownedBy: null,   // uid of building that claimed this tile for production
+            height: 0,       // elevation 0–3
+            isRamp: false,   // true when GRASS tile transitions height down to a neighbor
         };
+    }
+
+    // ── Heightmap ──────────────────────────────────────────────────────────────
+
+    _generateHeightmap() {
+        const hillCount = HILL_COUNT_MIN + Math.floor(Math.random() * (HILL_COUNT_MAX - HILL_COUNT_MIN + 1));
+
+        for (let h = 0; h < hillCount; h++) {
+            const hcol = 1 + Math.floor(Math.random() * (MAP_SIZE - 2));
+            const hrow = 1 + Math.floor(Math.random() * (MAP_SIZE - 2));
+
+            for (let row = 0; row < MAP_SIZE; row++) {
+                for (let col = 0; col < MAP_SIZE; col++) {
+                    const dist = Math.abs(col - hcol) + Math.abs(row - hrow);
+                    if (dist >= HILL_RADIUS) continue;
+                    const contribution = Math.round(MAX_TILE_HEIGHT * (1 - dist / HILL_RADIUS));
+                    const tile = this.grid[row][col];
+                    tile.height = Math.min(MAX_TILE_HEIGHT, Math.max(tile.height, contribution));
+                }
+            }
+        }
+
+        // Slope-limiting: no adjacent tile may differ in height by more than 1
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (let row = 0; row < MAP_SIZE; row++) {
+                for (let col = 0; col < MAP_SIZE; col++) {
+                    const tile = this.grid[row][col];
+                    for (const n of this.getNeighbors(col, row)) {
+                        if (tile.height - n.height > 1) {
+                            tile.height = n.height + 1;
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    _placeRamps() {
+        for (let row = 0; row < MAP_SIZE; row++) {
+            for (let col = 0; col < MAP_SIZE; col++) {
+                const tile = this.grid[row][col];
+                // Only GRASS tiles at height > 0 can be ramps
+                if (tile.type !== 'GRASS' || tile.height === 0) continue;
+                // Mark as ramp if any 4-dir GRASS neighbor is one level lower
+                for (const n of this.getNeighbors(col, row)) {
+                    if (n.type === 'GRASS' && n.height === tile.height - 1) {
+                        tile.isRamp = true;
+                        break;
+                    }
+                }
+            }
+        }
     }
 }

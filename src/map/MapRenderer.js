@@ -2,13 +2,15 @@ import { TILE_TYPES } from '../data/TileTypes.js';
 import { MAP_SIZE } from './TileMap.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
-import { DEPTH_TILE_HOVER, LAYER_TILE_SELECT } from '../config/DepthLayers.js';
+import { DEPTH_TILE_HOVER, LAYER_TILE_SELECT, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
 
 export const TILE_W = 64;
 export const TILE_H = 32;
 // Extra height for the depth faces drawn below the diamond.
 // Spritesheet source: 16px diamond + 8px sides, scaled 2× → 32px diamond + 16px sides.
 export const TILE_DEPTH = 16;
+// Vertical pixel offset per height level for objects on the surface.
+export const HEIGHT_STEP = 16;
 
 // World origin — top corner of the map diamond
 // originX centres the diamond horizontally: map spans from -MAP_SIZE*HALF_W to +MAP_SIZE*HALF_W
@@ -19,12 +21,24 @@ export const ORIGIN_Y = 60;
  * Convert tile [col, row] to world (screen) position.
  * The returned point is the BOTTOM-CENTER of the tile's top-diamond face,
  * matching sprite origin (0.5, 1.0).
+ *
+ * height > 0 raises the returned Y by height * HEIGHT_STEP, so objects placed
+ * on elevated surfaces (buildings, villagers, highlights) sit at the correct
+ * screen position.  Tile sprites themselves use height=0 — their taller canvas
+ * texture visually lifts the diamond without moving the anchor.
  */
-export function tileToWorld(col, row) {
+export function tileToWorld(col, row, height = 0) {
     return {
         x: (col - row) * (TILE_W / 2) + ORIGIN_X,
-        y: (col + row) * (TILE_H / 2) + ORIGIN_Y + TILE_H,
+        y: (col + row) * (TILE_H / 2) + ORIGIN_Y + TILE_H - height * HEIGHT_STEP,
     };
+}
+
+/** Returns the texture key for a tile, incorporating height. */
+function tileTextureKey(tile) {
+    if (tile.isField) return 'tile-field';
+    const base = TILE_TYPES[tile.type].textureKey; // e.g. 'tile-grass'
+    return `${base}-h${tile.height}`;
 }
 
 /**
@@ -72,14 +86,20 @@ export class MapRenderer {
             this.tileSprites[row] = [];
         }
 
-        for (const { col, row, depth } of order) {
+        for (const { col, row } of order) {
             const tile    = this.tileMap.getTile(col, row);
-            const texKey  = TILE_TYPES[tile.type].textureKey;
-            const { x, y } = tileToWorld(col, row);
+            const texKey  = tileTextureKey(tile);
+            // Tile sprites anchor at ground level (height=0); the taller canvas
+            // for elevated tiles makes the diamond appear higher on screen.
+            const { x, y } = tileToWorld(col, row, 0);
+            // Slight depth boost per height level so elevated tiles sort above
+            // same col+row ground tiles at cliff edges.
+            const depth = col + row + tile.height * HEIGHT_DEPTH_BIAS;
 
             const img = this.scene.add.image(x, y, texKey)
                 .setOrigin(0.5, 1)
                 .setDepth(depth);
+            if (tile.isRamp) img.setTint(0xffcc44); // golden tint distinguishes ramps
 
             // Store col/row on the sprite for fast event handler reads
             img.setData({ col, row });
@@ -141,7 +161,9 @@ export class MapRenderer {
     }
 
     highlightTile(col, row) {
-        const { x, y } = tileToWorld(col, row);
+        const tile = this.tileMap.getTile(col, row);
+        const h    = tile ? tile.height : 0;
+        const { x, y } = tileToWorld(col, row, h);
         this._highlightSprite.setPosition(x, y).setVisible(true);
     }
 
@@ -152,7 +174,9 @@ export class MapRenderer {
     selectArea(positions) {
         this.clearSelection();
         for (const { col, row } of positions) {
-            const { x, y } = tileToWorld(col, row);
+            const tile = this.tileMap.getTile(col, row);
+            const h    = tile ? tile.height : 0;
+            const { x, y } = tileToWorld(col, row, h);
             // Depth just above each tile but below buildings (col+row+2.5).
             // Building footprint highlights will be mostly hidden under the building sprite;
             // field/forest tile highlights are fully visible. The building gets its own
@@ -172,8 +196,13 @@ export class MapRenderer {
     /** Refresh the texture of a single tile (e.g. after it becomes a field). */
     refreshTile(col, row) {
         const tile   = this.tileMap.getTile(col, row);
-        const texKey = tile.isField ? 'tile-field' : TILE_TYPES[tile.type].textureKey;
-        this.tileSprites[row][col].setTexture(texKey);
+        const sprite = this.tileSprites[row][col];
+        sprite.setTexture(tileTextureKey(tile));
+        if (tile.isRamp && !tile.isField) {
+            sprite.setTint(0xffcc44);
+        } else {
+            sprite.clearTint();
+        }
     }
 
     destroy() {

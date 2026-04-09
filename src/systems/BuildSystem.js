@@ -36,6 +36,13 @@ export class BuildSystem {
         if (footprint.some(t => t.buildingId || t.isField || t.ownedBy))
             return { valid: false, reason: 'Tile already occupied.' };
 
+        // Reject uneven terrain and ramps
+        const heights = footprint.map(t => t.height);
+        if (!heights.every(h => h === heights[0]))
+            return { valid: false, reason: 'Terrain is not flat here.' };
+        if (footprint.some(t => t.isRamp))
+            return { valid: false, reason: 'Cannot build on a ramp.' };
+
         // Adjacency requirement — any 4-dir neighbour of any footprint tile must qualify
         if (config.requiresAdjacentTo) {
             const allNeighbours = footprint.flatMap(t => tileMap.getNeighbors(t.col, t.row));
@@ -160,8 +167,11 @@ export class BuildSystem {
             { col: bCol,     row: bRow - 2 },   // top
         ];
 
+        // Fields must be at the same elevation as the building
+        const buildingHeight = tileMap.getTile(bCol, bRow).height;
+
         for (const { col: fc, row: fr } of candidates) {
-            if (!this._isValidFieldBlock(tileMap, fc, fr)) continue;
+            if (!this._isValidFieldBlock(tileMap, fc, fr, buildingHeight)) continue;
             for (const [dc, dr] of FOOTPRINT) {
                 const t = tileMap.getTile(fc + dc, fr + dr);
                 t.isField = true;
@@ -171,12 +181,14 @@ export class BuildSystem {
         }
     }
 
-    _isValidFieldBlock(tileMap, fc, fr) {
+    _isValidFieldBlock(tileMap, fc, fr, requiredHeight = 0) {
         for (const [dc, dr] of FOOTPRINT) {
             const t = tileMap.getTile(fc + dc, fr + dr);
             if (!t) return false;
             if (t.type !== 'GRASS') return false;
             if (t.buildingId || t.isField || t.ownedBy) return false;
+            if (t.isRamp) return false;
+            if (t.height !== requiredHeight) return false;
         }
         return true;
     }

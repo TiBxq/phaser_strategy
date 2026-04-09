@@ -7,6 +7,13 @@
  *   for a 2×2 building the frontmost tile is (col+1, row+1) → offset = 2,
  *   so LAYER_BUILDING > 2.
  */
+/**
+ * Fractional depth bias per height level.
+ * Keeps elevated tiles visually above same col+row ground tiles at cliff edges
+ * without affecting relative order of objects at the same height.
+ */
+export const HEIGHT_DEPTH_BIAS = 0.01;
+
 export const LAYER_GHOST_TILE  = 0.15;  // ghost tile previews in build mode
 export const LAYER_FIELD       = 0.20;  // farm field sprites
 export const LAYER_WORKER      = 0.25;  // worker icon overlays on tiles

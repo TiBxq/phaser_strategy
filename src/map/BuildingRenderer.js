@@ -4,7 +4,7 @@ import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 import {
     LAYER_FIELD, LAYER_WORKER, LAYER_BUILDING, LAYER_GHOST_TILE,
-    DEPTH_GHOST_BUILDING, DEPTH_SELECTION_OVERLAY,
+    DEPTH_GHOST_BUILDING, DEPTH_SELECTION_OVERLAY, HEIGHT_DEPTH_BIAS,
 } from '../config/DepthLayers.js';
 
 // 2×2 footprint offsets
@@ -62,9 +62,11 @@ export class BuildingRenderer {
     }
 
     _addBuilding(building) {
-        const config   = BUILDING_CONFIGS[building.configId];
-        const { x, y } = tileToWorld(building.col, building.row);
-        const depth    = building.col + building.row + LAYER_BUILDING;
+        const config      = BUILDING_CONFIGS[building.configId];
+        const anchorTile  = this.tileMap.getTile(building.col, building.row);
+        const anchorH     = anchorTile ? anchorTile.height : 0;
+        const { x, y }   = tileToWorld(building.col, building.row, anchorH);
+        const depth       = building.col + building.row + anchorH * HEIGHT_DEPTH_BIAS + LAYER_BUILDING;
 
         const img = this.scene.add.image(x, y, config.textureKey)
             .setOrigin(0.5, 1)
@@ -83,10 +85,12 @@ export class BuildingRenderer {
     _addFieldSprite(col, row) {
         const key      = `${col}_${row}`;
         if (this._fieldSprites.has(key)) return;
-        const { x, y } = tileToWorld(col, row);
+        const tile     = this.tileMap.getTile(col, row);
+        const h        = tile ? tile.height : 0;
+        const { x, y } = tileToWorld(col, row, h);
         const img = this.scene.add.image(x, y, 'tile-field')
             .setOrigin(0.5, 1)
-            .setDepth(col + row + LAYER_FIELD);
+            .setDepth(col + row + h * HEIGHT_DEPTH_BIAS + LAYER_FIELD);
         this._fieldSprites.set(key, img);
     }
 
@@ -122,10 +126,12 @@ export class BuildingRenderer {
                 const key          = `${col}_${row}`;
                 if (this._workerSprites.has(key)) continue;
 
-                const { x, y } = tileToWorld(col, row);
+                const wTile    = this.tileMap.getTile(col, row);
+                const wH       = wTile ? wTile.height : 0;
+                const { x, y } = tileToWorld(col, row, wH);
                 const sprite   = this.scene.add.image(x, y, 'tile-worker-overlay')
                     .setOrigin(0.5, 1)
-                    .setDepth(col + row + LAYER_WORKER);
+                    .setDepth(col + row + wH * HEIGHT_DEPTH_BIAS + LAYER_WORKER);
                 this._workerSprites.set(key, sprite);
             }
         }
@@ -148,23 +154,26 @@ export class BuildingRenderer {
 
     updateGhost(col, row, isValid) {
         if (!this._ghost) return;
-        const { x, y } = tileToWorld(col, row);
-        // Same anchor formula as _addBuilding (2×2 center = anchor y, no TILE_DEPTH)
+        const anchorTile = this.tileMap.getTile(col, row);
+        const anchorH    = anchorTile ? anchorTile.height : 0;
+        const { x, y }   = tileToWorld(col, row, anchorH);
         this._ghost.setPosition(x, y).setVisible(true);
         this._ghost.setTint(isValid ? 0x88ff88 : 0xff6666);
 
         this._clearGhostTiles();
 
         // Show footprint overlay (4 tiles)
-        for (const [dc, dr] of FOOTPRINT) {
-            const tc = col + dc;
-            const tr = row + dr;
-            const { x: tx, y: ty } = tileToWorld(tc, tr);
-            const ghost = this.scene.add.image(tx, ty, 'tile-ghost-claim')
+        for (const [deltaCol, deltaRow] of FOOTPRINT) {
+            const footprintCol  = col + deltaCol;
+            const footprintRow  = row + deltaRow;
+            const footprintTile = this.tileMap.getTile(footprintCol, footprintRow);
+            const tileHeight    = footprintTile ? footprintTile.height : 0;
+            const { x: worldX, y: worldY } = tileToWorld(footprintCol, footprintRow, tileHeight);
+            const ghostSprite = this.scene.add.image(worldX, worldY, 'tile-ghost-claim')
                 .setOrigin(0.5, 1)
-                .setDepth(tc + tr + 0.15)
+                .setDepth(footprintCol + footprintRow + tileHeight * HEIGHT_DEPTH_BIAS + LAYER_GHOST_TILE)
                 .setTint(isValid ? 0x88ff88 : 0xff4444);
-            this._ghostTileSprites.push(ghost);
+            this._ghostTileSprites.push(ghostSprite);
         }
 
         // Show claimable tiles for tile-based buildings
@@ -179,42 +188,49 @@ export class BuildingRenderer {
                 { col: col - 2, row: row     },
                 { col: col,     row: row - 2 },
             ];
-            for (const { col: fc, row: fr } of candidates) {
-                if (!this._isValidGhostFieldBlock(fc, fr)) continue;
-                for (const [dc, dr] of FOOTPRINT) {
-                    const { x: gx, y: gy } = tileToWorld(fc + dc, fr + dr);
-                    const g = this.scene.add.image(gx, gy, 'tile-ghost-claim')
+            for (const { col: fieldCol, row: fieldRow } of candidates) {
+                if (!this._isValidGhostFieldBlock(fieldCol, fieldRow, anchorH)) continue;
+                for (const [deltaCol, deltaRow] of FOOTPRINT) {
+                    const tileCol    = fieldCol + deltaCol;
+                    const tileRow    = fieldRow + deltaRow;
+                    const tile       = this.tileMap.getTile(tileCol, tileRow);
+                    const tileHeight = tile ? tile.height : 0;
+                    const { x: worldX, y: worldY } = tileToWorld(tileCol, tileRow, tileHeight);
+                    const ghostSprite = this.scene.add.image(worldX, worldY, 'tile-ghost-claim')
                         .setOrigin(0.5, 1)
-                        .setDepth(fc + dc + fr + dr + LAYER_GHOST_TILE);
-                    this._ghostTileSprites.push(g);
+                        .setDepth(tileCol + tileRow + tileHeight * HEIGHT_DEPTH_BIAS + LAYER_GHOST_TILE);
+                    this._ghostTileSprites.push(ghostSprite);
                 }
             }
         } else if (config.claimsTileType === 'FOREST') {
             // Lumbermill: preview FOREST tiles within radius 2
-            for (let tc = col - 2; tc <= col + 3; tc++) {
-                for (let tr = row - 2; tr <= row + 3; tr++) {
-                    const t = this.tileMap.getTile(tc, tr);
-                    if (!t || t.type !== 'FOREST' || t.ownedBy) continue;
-                    const dx = Math.max(0, col - tc, tc - (col + 1));
-                    const dy = Math.max(0, row - tr, tr - (row + 1));
-                    if (dx + dy < 1 || dx + dy > 2) continue;
+            for (let tileCol = col - 2; tileCol <= col + 3; tileCol++) {
+                for (let tileRow = row - 2; tileRow <= row + 3; tileRow++) {
+                    const tile = this.tileMap.getTile(tileCol, tileRow);
+                    if (!tile || tile.type !== 'FOREST' || tile.ownedBy) continue;
+                    const distCol = Math.max(0, col - tileCol, tileCol - (col + 1));
+                    const distRow = Math.max(0, row - tileRow, tileRow - (row + 1));
+                    if (distCol + distRow < 1 || distCol + distRow > 2) continue;
 
-                    const { x: gx, y: gy } = tileToWorld(tc, tr);
-                    const g = this.scene.add.image(gx, gy, 'tile-ghost-claim')
+                    const tileHeight = tile.height;
+                    const { x: worldX, y: worldY } = tileToWorld(tileCol, tileRow, tileHeight);
+                    const ghostSprite = this.scene.add.image(worldX, worldY, 'tile-ghost-claim')
                         .setOrigin(0.5, 1)
-                        .setDepth(tc + tr + LAYER_GHOST_TILE);
-                    this._ghostTileSprites.push(g);
+                        .setDepth(tileCol + tileRow + tileHeight * HEIGHT_DEPTH_BIAS + LAYER_GHOST_TILE);
+                    this._ghostTileSprites.push(ghostSprite);
                 }
             }
         }
     }
 
-    _isValidGhostFieldBlock(fc, fr) {
-        for (const [dc, dr] of FOOTPRINT) {
-            const t = this.tileMap.getTile(fc + dc, fr + dr);
-            if (!t) return false;
-            if (t.type !== 'GRASS') return false;
-            if (t.buildingId || t.isField || t.ownedBy) return false;
+    _isValidGhostFieldBlock(fieldCol, fieldRow, requiredHeight = 0) {
+        for (const [deltaCol, deltaRow] of FOOTPRINT) {
+            const tile = this.tileMap.getTile(fieldCol + deltaCol, fieldRow + deltaRow);
+            if (!tile) return false;
+            if (tile.type !== 'GRASS') return false;
+            if (tile.buildingId || tile.isField || tile.ownedBy) return false;
+            if (tile.isRamp) return false;
+            if (tile.height !== requiredHeight) return false;
         }
         return true;
     }
@@ -222,8 +238,10 @@ export class BuildingRenderer {
     // ─── Building selection overlay ────────────────────────────────────────────
 
     _showSelectionOverlay(building) {
-        const config   = BUILDING_CONFIGS[building.configId];
-        const { x, y } = tileToWorld(building.col, building.row);
+        const config      = BUILDING_CONFIGS[building.configId];
+        const anchorTile  = this.tileMap.getTile(building.col, building.row);
+        const anchorH     = anchorTile ? anchorTile.height : 0;
+        const { x, y }   = tileToWorld(building.col, building.row, anchorH);
         if (!this._selectionOverlay) {
             this._selectionOverlay = this.scene.add.image(x, y, config.textureKey)
                 .setOrigin(0.5, 1)

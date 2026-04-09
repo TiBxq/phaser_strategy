@@ -35,7 +35,9 @@ export class FloatingLabels {
     }
 
     _spawnLabel({ col, row, resource, label, yOffset = 0 }) {
-        const { x, y } = tileToWorld(col, row);
+        const tile     = this._scene.tileMap?.getTile(col, row);
+        const h        = tile ? tile.height : 0;
+        const { x, y } = tileToWorld(col, row, h);
         // 2×2 building center is at y+16; label rises from above the building top
         const startY   = y + 16 - TILE_DEPTH - 28 - yOffset;
 

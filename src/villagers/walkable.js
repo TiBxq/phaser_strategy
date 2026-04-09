@@ -1,8 +1,27 @@
 import { MAP_SIZE } from '../map/TileMap.js';
 
+const FLAT_MOVE_COST = 1;   // cost for movement between tiles at the same height
+const RAMP_MOVE_COST = 2;   // cost for movement up/down a ramp tile
+
 /** A tile is walkable if it is grass with no building on it. */
 export function isWalkable(tile) {
     return tile && tile.type === 'GRASS' && !tile.buildingId;
+}
+
+/**
+ * Movement cost between two adjacent tiles, used by A* for height-aware pathfinding.
+ * - Same height: cost 1.
+ * - Height diff of 1 via a ramp on the upper tile: cost 2.
+ * - Any other height change (cliff, diff > 1): Infinity (impassable).
+ */
+export function heightMoveCost(fromTile, toTile) {
+    const diff = Math.abs(fromTile.height - toTile.height);
+    if (diff === 0) return FLAT_MOVE_COST;
+    if (diff === 1) {
+        const upper = fromTile.height > toTile.height ? fromTile : toTile;
+        return upper.isRamp ? RAMP_MOVE_COST : Infinity;
+    }
+    return Infinity;
 }
 
 /**
