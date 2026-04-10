@@ -22,6 +22,7 @@ export class Preloader extends Phaser.Scene {
         this.load.image('building-quarry',     'assets/buildings/quarry.png');
         this.load.image('building-market',     'assets/buildings/market.png');
         this.load.image('building-warehouse',  'assets/buildings/warehouse.png');
+        this.load.image('building-townhall',   'assets/buildings/town_hall.png');
 
         // UI icon spritesheet (16×16 frames)
         this.load.image('icons-sheet', 'assets/ui/icons/items_sheet.png');

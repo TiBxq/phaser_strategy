@@ -15,6 +15,12 @@ const PRICE_STYLE = {
     color:      '#ffdd88',
 };
 
+const LOCKED_STYLE = {
+    fontFamily: 'monospace',
+    fontSize:   '9px',
+    color:      '#888899',
+};
+
 const ICON_SIZE  = 16;
 const ICON_GAP   = 2;   // gap between icon and its number
 const ENTRY_GAP  = 5;   // gap between cost entries
@@ -22,15 +28,16 @@ const NUM_W      = 18;  // approximate width of a cost number (up to 3 digits at
 const ENTRY_W    = ICON_SIZE + ICON_GAP + NUM_W;
 
 // Displayed order of buildings in the menu
-const MENU_ORDER = ['HOUSE', 'FARM', 'LUMBERMILL', 'QUARRY', 'MARKET', 'WAREHOUSE'];
+const MENU_ORDER = ['TOWN_HALL', 'HOUSE', 'FARM', 'LUMBERMILL', 'QUARRY', 'MARKET', 'WAREHOUSE'];
 
 export class BuildingMenu {
-    constructor(scene, resourceSystem) {
-        this.scene          = scene;
+    constructor(scene, resourceSystem, buildSystem) {
+        this.scene           = scene;
         this._resourceSystem = resourceSystem;
-        this._activeId      = null;
-        this._buttons       = {};
-        this._priceTags     = {}; // id -> { text, cost }
+        this._buildSystem    = buildSystem;
+        this._activeId       = null;
+        this._buttons        = {};
+        this._priceTags      = {}; // id -> { texts, cost }
 
         // Background
         scene.add.image(scene.scale.width / 2, scene.scale.height, 'ui-bottombar')
@@ -41,8 +48,10 @@ export class BuildingMenu {
         const canvasW  = scene.scale.width;
         const canvasH  = scene.scale.height;
         const barH     = 40;
-        const btnW     = 148;
         const btnH     = 30;
+        // Fit all buttons dynamically
+        const MIN_GAP  = 8;
+        const btnW     = Math.floor((canvasW - (MENU_ORDER.length + 1) * MIN_GAP) / MENU_ORDER.length);
         const gap      = (canvasW - MENU_ORDER.length * btnW) / (MENU_ORDER.length + 1);
         const y        = canvasH - barH / 2;
 
@@ -65,10 +74,11 @@ export class BuildingMenu {
             const totalPriceW  = costEntries.length * ENTRY_W + (costEntries.length - 1) * ENTRY_GAP;
             let   priceX       = x + btnW / 2 - totalPriceW / 2;
             const priceTexts   = [];
+            const priceIcons   = [];
             const priceY       = y + btnH / 4;
 
             for (const [resource, amount] of costEntries) {
-                scene.add.image(priceX + ICON_SIZE / 2, priceY, `icon-${resource}`)
+                const icon = scene.add.image(priceX + ICON_SIZE / 2, priceY, `icon-${resource}`)
                     .setOrigin(0.5, 0.5)
                     .setScrollFactor(0)
                     .setDepth(DEPTH_UI_TEXT);
@@ -77,10 +87,18 @@ export class BuildingMenu {
                     .setScrollFactor(0)
                     .setDepth(DEPTH_UI_TEXT);
                 priceTexts.push(numText);
+                priceIcons.push(icon);
                 priceX += ENTRY_W + ENTRY_GAP;
             }
 
-            this._priceTags[id] = { texts: priceTexts, cost: config.cost };
+            // "Needs: X" label shown only when locked (hidden by default)
+            const lockedLabel = scene.add.text(x + btnW / 2, priceY, '', LOCKED_STYLE)
+                .setOrigin(0.5, 0.5)
+                .setScrollFactor(0)
+                .setDepth(DEPTH_UI_TEXT)
+                .setVisible(false);
+
+            this._priceTags[id] = { texts: priceTexts, icons: priceIcons, cost: config.cost, lockedLabel };
 
             btn.on('pointerover', () => {
                 if (this._activeId !== id) btn.setTexture('btn-hover');
@@ -90,7 +108,6 @@ export class BuildingMenu {
             });
             btn.on('pointerdown', () => {
                 if (this._activeId === id) {
-                    // Toggle off
                     this._deactivate();
                     GameEvents.emit(EventNames.BUILD_MODE_EXIT);
                 } else {
@@ -107,14 +124,80 @@ export class BuildingMenu {
 
         // Update price colours when resources change
         GameEvents.on(EventNames.RESOURCES_CHANGED, () => this._updatePriceColors());
+
+        // Re-evaluate lock conditions when any building is placed
+        GameEvents.on(EventNames.BUILDING_PLACED, () => this._updateLockStates());
+
+        // Apply initial lock states
+        this._updateLockStates();
     }
 
+    // ─── Lock system ───────────────────────────────────────────────────────────
+
+    /**
+     * Returns true if all requires conditions for this building ID are met.
+     * Extensible: add new condition types here as the game grows.
+     */
+    _checkRequirements(id) {
+        const config = BUILDING_CONFIGS[id];
+        if (!config.requires || config.requires.length === 0) return true;
+        return config.requires.every(req => {
+            if (req.type === 'buildingPlaced') {
+                for (const b of this._buildSystem.placedBuildings.values()) {
+                    if (b.configId === req.configId) return true;
+                }
+                return false;
+            }
+            return true;
+        });
+    }
+
+    _updateLockStates() {
+        for (const id of MENU_ORDER) {
+            const unlocked = this._checkRequirements(id);
+            const { btn, lbl } = this._buttons[id];
+            const { texts, icons, lockedLabel } = this._priceTags[id];
+            const LOCKED_ALPHA = 0.4;
+
+            if (unlocked) {
+                btn.setAlpha(1).setInteractive({ useHandCursor: true });
+                lbl.setAlpha(1);
+                for (const t of texts) t.setVisible(true);
+                for (const ic of icons) ic.setVisible(true);
+                lockedLabel.setVisible(false);
+            } else {
+                // If this locked building was in active build mode, cancel it
+                if (this._activeId === id) {
+                    this._deactivate();
+                    GameEvents.emit(EventNames.BUILD_MODE_EXIT);
+                }
+                btn.setAlpha(LOCKED_ALPHA).disableInteractive();
+                lbl.setAlpha(LOCKED_ALPHA);
+                for (const t of texts) t.setVisible(false);
+                for (const ic of icons) ic.setVisible(false);
+
+                // Show what's needed
+                const firstReq = BUILDING_CONFIGS[id].requires[0];
+                if (firstReq?.type === 'buildingPlaced') {
+                    const reqLabel = BUILDING_CONFIGS[firstReq.configId]?.label ?? firstReq.configId;
+                    lockedLabel.setText(`Needs: ${reqLabel}`).setVisible(true);
+                }
+            }
+        }
+    }
+
+    // ─── Price colours ─────────────────────────────────────────────────────────
+
     _updatePriceColors() {
-        for (const { texts, cost } of Object.values(this._priceTags)) {
+        for (const id of MENU_ORDER) {
+            if (!this._checkRequirements(id)) continue;
+            const { texts, cost } = this._priceTags[id];
             const color = this._resourceSystem.canAfford(cost) ? '#ffdd88' : '#ff4444';
             for (const t of texts) t.setColor(color);
         }
     }
+
+    // ─── Active state ──────────────────────────────────────────────────────────
 
     _activate(id) {
         this._deactivate();

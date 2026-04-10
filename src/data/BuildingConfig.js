@@ -20,6 +20,24 @@
  *   description         — short text shown in TileInfoPanel
  */
 export const BUILDING_CONFIGS = Object.freeze({
+    TOWN_HALL: {
+        id: 'TOWN_HALL',
+        label: 'Town Hall',
+        textureKey: 'building-townhall',
+        cost: { food: 0, wood: 0, stone: 0, money: 0 },
+        buildableOn: ['GRASS'],
+        requiresAdjacentTo: null,
+        footprint: 2,
+        claimsTileType: null,
+        producesResource: null,
+        productionPerVillager: 0,
+        maxVillagers: 0,
+        villagerCapacity: 4,
+        onPlace: 'spawnVillager',
+        requires: [],
+        description: '2×2 building. Houses 4 villagers. Required before other buildings.',
+    },
+
     HOUSE: {
         id: 'HOUSE',
         label: 'House',
@@ -34,6 +52,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 0,
         villagerCapacity: 2,
         onPlace: 'spawnVillager',
+        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
         description: '2×2 building. Houses 2 villagers.',
         upgradesTo: 'HOUSE_T2',
         upgradeCost: { food: 0, wood: 25, stone: 30, money: 50 },
@@ -71,6 +90,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 4,
         villagerCapacity: 0,
         onPlace: 'spawnFields',
+        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
         description: '2×2 building. Claims adjacent 2×2 grass blocks as fields. 1 villager per field → 3 food/tick.',
     },
 
@@ -88,6 +108,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 0,   // dynamic: floor(forestTiles.length / 4)
         villagerCapacity: 0,
         onPlace: 'claimForest',
+        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
         description: '2×2 building. Claims all forest within radius 2. Workers = floor(tiles/4), each → 2 wood/tick.',
     },
 
@@ -105,6 +126,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 6,
         villagerCapacity: 0,
         onPlace: 'initRocksTiles',
+        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
         description: '2×2 building on rocks. Mines the 4 tiles it occupies (400 stone total). Up to 6 workers → 1 stone/tick each.',
     },
 
@@ -122,6 +144,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 4,
         villagerCapacity: 0,
         onPlace: null,
+        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
         description: '2×2 building. Each merchant converts 3 food → 5 money/tick.',
     },
 
@@ -139,6 +162,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 0,
         villagerCapacity: 0,
         onPlace: 'increaseStorageCap',
+        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
         description: '2×2 building. Increases all resource caps by 100.',
     },
 });
