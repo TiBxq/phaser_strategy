@@ -36,7 +36,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         onPlace: 'spawnVillager',
         description: '2×2 building. Houses 2 villagers.',
         upgradesTo: 'HOUSE_T2',
-        upgradeCost: { food: 10, wood: 20, stone: 0, money: 0 },
+        upgradeCost: { food: 0, wood: 25, stone: 30, money: 50 },
     },
 
     HOUSE_T2: {
@@ -101,11 +101,11 @@ export const BUILDING_CONFIGS = Object.freeze({
         footprint: 2,
         claimsTileType: null,
         producesResource: 'stone',
-        productionPerVillager: 2,
-        maxVillagers: 3,
+        productionPerVillager: 1,
+        maxVillagers: 6,
         villagerCapacity: 0,
         onPlace: 'initRocksTiles',
-        description: '2×2 building on rocks. Mines the 4 tiles it occupies (100 stone each). Up to 3 workers → 2 stone/tick each.',
+        description: '2×2 building on rocks. Mines the 4 tiles it occupies (400 stone total). Up to 6 workers → 1 stone/tick each.',
     },
 
     MARKET: {
