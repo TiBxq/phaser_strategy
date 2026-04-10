@@ -41,7 +41,7 @@ All event name strings are constants in `src/events/EventNames.js`. Systems emit
 ### Data Layer (`src/data/`)
 
 - **`TileTypes.js`** — `TILE_TYPES` (GRASS/FOREST/ROCKS) with weights, `initialResources` (GRASS=0, FOREST=50, ROCKS=100), and a pre-built `TILE_TYPE_POOL` for fast weighted-random picks.
-- **`BuildingConfig.js`** — `BUILDING_CONFIGS` object keyed by building ID. Each entry includes `footprint` (always 2), `claimsTileType` (null | 'GRASS' | 'FOREST'), `onPlace` token, and production fields. Adding a new building is a single entry here.
+- **`BuildingConfig.js`** — `BUILDING_CONFIGS` object keyed by building ID. Each entry includes `footprint` (always 2), `claimsTileType` (null | 'GRASS' | 'FOREST'), `onPlace` token, and production fields. Adding a new building is a single entry here. Upgradeable buildings also carry `upgradesTo` (target config ID) and `upgradeCost` (resource object). Upgrade-only configs set `isUpgrade: true` to hide them from the build menu.
 - **`ResourceConfig.js`** — starting amounts, default cap (200), cap per Warehouse (+100), food cost per villager per tick.
 
 ### Config (`src/config/`)
@@ -69,6 +69,7 @@ All systems are plain classes with no Phaser scene dependencies (except `Product
   - `initRocksTiles`: records the 4 footprint ROCKS tile positions in `building.rocksTiles[]` (Quarry; no external claiming)
   - `increaseStorageCap`: raises resource cap (Warehouse)
   - `getBuildingAt(col, row)` checks the full 2×2 footprint range.
+  - `canUpgrade(uid)` / `upgrade(uid, villagerManager)` — swap `building.configId` to `config.upgradesTo`, deduct `upgradeCost`, spawn extra villagers, emit `BUILDING_UPGRADED`.
 - **`VillagerManager`**: Villager pool (`total`, `unassigned`). Dynamic worker caps: Farm = `fieldTiles.length` (field block count), Lumbermill = `Math.floor(forestTiles.length / 4)`, others use static `config.maxVillagers`. Emits `VILLAGERS_CHANGED`. `notifyChanged()` re-emits VILLAGERS_CHANGED (called by ProductionSystem after tile depletion).
 - **`ProductionSystem`**: Runs every 5 s. Farm: `productionPerVillager × min(assigned, fieldTiles.length)`. Lumbermill: `productionPerVillager × min(assigned, floor(forestTiles.length / 4))`. Quarry: skips entirely when `rocksTiles` is empty. After each extraction tick, calls `_depleteTiles()` which reduces `tile.resources`, converts exhausted non-footprint tiles to GRASS, and emits `TILE_DEPLETED { col, row, buildingUid, isBuildingFootprint }`. Deducts food per villager per tick. Emits `STARVATION_WARNING` when food hits 0. Emits `PRODUCTION_TICK { produced, consumed, yields[] }`.
 
@@ -89,7 +90,7 @@ All UI components are plain classes instantiated by `UI.js`. They use `setScroll
 - **`ResourceBar`**: Top strip. Shows `name: amount/cap` for each resource. Flashes yellow on increase, red on starvation warning.
 - **`BuildingMenu`**: Bottom strip. 5 building buttons showing cost (red if unaffordable). Emits `BUILD_MODE_ENTER { configId }` / `BUILD_MODE_EXIT`.
 - **`BuildModeIndicator`**: Shows current build mode label at top-center.
-- **`TileInfoPanel`**: Right panel. Shows tile type or building info on `TILE_SELECTED` / `BUILDING_PLACED`. For Lumbermill/Quarry also shows live "Wood left" / "Stone left" totals, refreshed on `PRODUCTION_TICK` and `TILE_DEPLETED`.
+- **`TileInfoPanel`**: Right panel. Shows tile type or building info on `TILE_SELECTED` / `BUILDING_PLACED`. For Lumbermill/Quarry also shows live "Wood left" / "Stone left" totals, refreshed on `PRODUCTION_TICK` and `TILE_DEPLETED`. When the selected building has `upgradesTo`, shows an Upgrade button with resource icons (same icon+number layout as BuildingMenu); cost numbers turn red when unaffordable. Clicking emits `BUILDING_UPGRADE_REQUEST`.
 - **`VillagerPanel`**: Right panel (below TileInfoPanel). `[–]` / `[+]` buttons for worker assignment. Shows dynamic worker cap (tile-based for Farm/Lumbermill). Visible for any building with `maxVillagers > 0` or `claimsTileType`.
 - **`FloatingLabels`** (Game scene, not UI scene): Spawns floating `+N` / `-N` labels on production ticks and building placement. World-space coordinates, scrolls with camera.
 - **`NotificationManager`**: Transient message display for placement errors etc.
@@ -108,3 +109,10 @@ All UI components are plain classes instantiated by `UI.js`. They use `setScroll
 1. Add an entry to `BUILDING_CONFIGS` in `src/data/BuildingConfig.js` (include `footprint: 2`, `claimsTileType`, `onPlace`).
 2. Add a texture key call in `Preloader._generateBuildingTextures()`.
 3. If the building needs a new `onPlace` behavior, add a `case` in `BuildSystem.place()`.
+
+### Adding a Building Upgrade Tier
+
+1. Add `upgradesTo: 'TARGET_ID'` and `upgradeCost: { ... }` to the source config in `BuildingConfig.js`.
+2. Add the target config entry with `isUpgrade: true` (hides it from the build menu) and the desired stats (e.g. higher `villagerCapacity`).
+3. Load the tier texture in `Preloader.preload()`.
+4. No further wiring needed — `BuildSystem.canUpgrade/upgrade`, `TileInfoPanel`, and `BuildingRenderer` all handle upgrades generically via the config fields.
