@@ -118,6 +118,42 @@ export class BuildSystem {
         return building;
     }
 
+    // ─── Upgrade ───────────────────────────────────────────────────────────────
+
+    /**
+     * Returns { valid: boolean, reason: string }.
+     */
+    canUpgrade(uid) {
+        const building = this.placedBuildings.get(uid);
+        if (!building) return { valid: false, reason: 'Building not found.' };
+
+        const config = BUILDING_CONFIGS[building.configId];
+        if (!config.upgradesTo) return { valid: false, reason: 'This building cannot be upgraded.' };
+
+        if (!this.resourceSystem.canAfford(config.upgradeCost))
+            return { valid: false, reason: 'Insufficient resources.' };
+
+        return { valid: true, reason: '' };
+    }
+
+    /**
+     * Upgrades a building to its next tier. Assumes canUpgrade() already passed.
+     */
+    upgrade(uid, villagerManager) {
+        const building   = this.placedBuildings.get(uid);
+        const oldConfig  = BUILDING_CONFIGS[building.configId];
+        const newConfig  = BUILDING_CONFIGS[oldConfig.upgradesTo];
+
+        this.resourceSystem.spend(oldConfig.upgradeCost);
+
+        const extra = newConfig.villagerCapacity - oldConfig.villagerCapacity;
+        building.configId = newConfig.id;
+
+        if (extra > 0) villagerManager.addVillagers(extra);
+
+        GameEvents.emit(EventNames.BUILDING_UPGRADED, { building });
+    }
+
     // ─── Removal ───────────────────────────────────────────────────────────────
 
     remove(uid, tileMap) {

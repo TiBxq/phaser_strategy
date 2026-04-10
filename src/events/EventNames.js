@@ -47,4 +47,12 @@ export const EventNames = Object.freeze({
     // A resource tile (FOREST or ROCKS) was fully depleted by a production building
     // payload: { col, row, buildingUid, isBuildingFootprint }
     TILE_DEPLETED: 'tile:depleted',
+
+    // UI requested to upgrade a building
+    // payload: { buildingUid }
+    BUILDING_UPGRADE_REQUEST: 'building:upgrade_request',
+
+    // A building was upgraded to the next tier
+    // payload: { building }
+    BUILDING_UPGRADED: 'building:upgraded',
 });

@@ -35,6 +35,26 @@ export const BUILDING_CONFIGS = Object.freeze({
         villagerCapacity: 2,
         onPlace: 'spawnVillager',
         description: '2×2 building. Houses 2 villagers.',
+        upgradesTo: 'HOUSE_T2',
+        upgradeCost: { food: 10, wood: 20, stone: 0, money: 0 },
+    },
+
+    HOUSE_T2: {
+        id: 'HOUSE_T2',
+        label: 'House Tier 2',
+        textureKey: 'building-house-t2',
+        cost: { food: 0, wood: 0, stone: 0, money: 0 },
+        buildableOn: ['GRASS'],
+        requiresAdjacentTo: null,
+        footprint: 2,
+        claimsTileType: null,
+        producesResource: null,
+        productionPerVillager: 0,
+        maxVillagers: 0,
+        villagerCapacity: 4,
+        onPlace: null,
+        isUpgrade: true,
+        description: '2×2 building. Houses 4 villagers.',
     },
 
     FARM: {

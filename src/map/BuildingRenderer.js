@@ -59,6 +59,13 @@ export class BuildingRenderer {
         GameEvents.on(EventNames.TILE_DESELECTED, () => {
             this._clearSelectionOverlay();
         });
+
+        GameEvents.on(EventNames.BUILDING_UPGRADED, ({ building }) => {
+            const sprite = this._buildingSprites.get(building.uid);
+            const newConfig = BUILDING_CONFIGS[building.configId];
+            if (sprite) sprite.setTexture(newConfig.textureKey);
+            if (this._selectionOverlay?.visible) this._showSelectionOverlay(building);
+        });
     }
 
     _addBuilding(building) {

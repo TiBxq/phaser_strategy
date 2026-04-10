@@ -16,6 +16,7 @@ export class Preloader extends Phaser.Scene {
 
         // Building sprites — 128×96 px each (2×2 tile footprint, 32px top decoration)
         this.load.image('building-house',      'assets/buildings/house_lvl1.png');
+        this.load.image('building-house-t2',   'assets/buildings/house_lvl2.png');
         this.load.image('building-farm',       'assets/buildings/farm.png');
         this.load.image('building-lumbermill', 'assets/buildings/lumbermill.png');
         this.load.image('building-quarry',     'assets/buildings/quarry.png');

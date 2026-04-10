@@ -21,7 +21,7 @@ export class UI extends Phaser.Scene {
         this.buildingMenu = new BuildingMenu(this, gameScene.resourceSystem);
         this.buildModeIndicator = new BuildModeIndicator(this);
         this.notificationManager = new NotificationManager(this);
-        this.tileInfoPanel = new TileInfoPanel(this, gameScene.buildSystem, gameScene.tileMap);
+        this.tileInfoPanel = new TileInfoPanel(this, gameScene.buildSystem, gameScene.tileMap, gameScene.resourceSystem);
         this.villagerPanel = new VillagerPanel(this, gameScene.buildSystem, gameScene.villagerManager);
 
         // Wire villager assignment events to VillagerManager
@@ -31,6 +31,15 @@ export class UI extends Phaser.Scene {
 
         GameEvents.on(EventNames.VILLAGER_UNASSIGN_REQUEST, ({ buildingUid, count }) => {
             gameScene.villagerManager.unassign(buildingUid, count, gameScene.buildSystem);
+        });
+
+        GameEvents.on(EventNames.BUILDING_UPGRADE_REQUEST, ({ buildingUid }) => {
+            const result = gameScene.buildSystem.canUpgrade(buildingUid);
+            if (!result.valid) {
+                GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: result.reason });
+                return;
+            }
+            gameScene.buildSystem.upgrade(buildingUid, gameScene.villagerManager);
         });
 
         // Trigger initial resource display
