@@ -58,6 +58,15 @@ export class TileInfoPanel {
             .setScrollFactor(0)
             .setDepth(1001);
 
+        this._noRoadText = scene.add.text(PX + 8, PY + 110, 'No road connection', {
+            fontFamily: 'monospace',
+            fontSize:   '10px',
+            color:      '#ff4444',
+        })
+            .setScrollFactor(0)
+            .setDepth(1001)
+            .setVisible(false);
+
         // Upgrade button (hidden by default)
         // btn-normal is 148×30; centered in 200px panel → left edge at PX+26
         this._upgradeBtn = scene.add.image(PX + 26, PY + 165, 'btn-normal')
@@ -133,6 +142,13 @@ export class TileInfoPanel {
                 this._show(this._currentTile.col, this._currentTile.row, this._currentTile.tile);
             }
         });
+
+        // Refresh if the selected building's connectivity changed
+        GameEvents.on(EventNames.BUILDING_CONNECTIVITY_CHANGED, () => {
+            if (this._currentTile) {
+                this._show(this._currentTile.col, this._currentTile.row, this._currentTile.tile);
+            }
+        });
     }
 
     _show(col, row, tile) {
@@ -170,6 +186,7 @@ export class TileInfoPanel {
                 body += `\nStone left: ${total}`;
             }
             this._bodyText.setText(body);
+            this._noRoadText.setVisible(!building.isConnected);
 
             if (config.upgradesTo) {
                 this._currentUpgradeBuildingUid = building.uid;
@@ -179,6 +196,7 @@ export class TileInfoPanel {
                 this._clearUpgradeBtn();
             }
         } else {
+            this._noRoadText.setVisible(false);
             this._titleText.setText(`Tile (${col}, ${row})`);
             const typeLabel = tile.isField
                 ? 'Farm Field'
@@ -242,6 +260,7 @@ export class TileInfoPanel {
         this._bg.setVisible(false);
         this._titleText.setVisible(false);
         this._bodyText.setVisible(false);
+        this._noRoadText.setVisible(false);
         this._clearUpgradeBtn();
     }
 }

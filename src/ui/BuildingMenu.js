@@ -1,4 +1,4 @@
-import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
+import { BUILDING_CONFIGS, ROAD_CONFIG } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 import { DEPTH_UI_BACKGROUND, DEPTH_UI_ELEMENT, DEPTH_UI_TEXT } from '../config/DepthLayers.js';
@@ -27,8 +27,8 @@ const ENTRY_GAP  = 5;   // gap between cost entries
 const NUM_W      = 18;  // approximate width of a cost number (up to 3 digits at 9px monospace)
 const ENTRY_W    = ICON_SIZE + ICON_GAP + NUM_W;
 
-// Displayed order of buildings in the menu
-const MENU_ORDER = ['TOWN_HALL', 'HOUSE', 'FARM', 'LUMBERMILL', 'QUARRY', 'MARKET', 'WAREHOUSE'];
+// Displayed order of buildings in the menu ('ROAD' is a special pseudo-entry)
+const MENU_ORDER = ['TOWN_HALL', 'HOUSE', 'FARM', 'LUMBERMILL', 'QUARRY', 'MARKET', 'WAREHOUSE', 'ROAD'];
 
 export class BuildingMenu {
     constructor(scene, resourceSystem, buildSystem) {
@@ -56,7 +56,7 @@ export class BuildingMenu {
         const y        = canvasH - barH / 2;
 
         MENU_ORDER.forEach((id, i) => {
-            const config = BUILDING_CONFIGS[id];
+            const config = id === 'ROAD' ? ROAD_CONFIG : BUILDING_CONFIGS[id];
             const x = gap + i * (btnW + gap);
 
             const btn = scene.add.image(x, y, 'btn-normal')
@@ -107,7 +107,15 @@ export class BuildingMenu {
                 if (this._activeId !== id) btn.setTexture('btn-normal');
             });
             btn.on('pointerdown', () => {
-                if (this._activeId === id) {
+                if (id === 'ROAD') {
+                    if (this._activeId === 'ROAD') {
+                        this._deactivate();
+                        GameEvents.emit(EventNames.ROAD_MODE_EXIT);
+                    } else {
+                        this._activate('ROAD');
+                        GameEvents.emit(EventNames.ROAD_MODE_ENTER);
+                    }
+                } else if (this._activeId === id) {
                     this._deactivate();
                     GameEvents.emit(EventNames.BUILD_MODE_EXIT);
                 } else {
@@ -119,8 +127,9 @@ export class BuildingMenu {
             this._buttons[id] = { btn, lbl };
         });
 
-        // Exit build mode from outside (Escape / right-click)
+        // Exit build/road mode from outside (Escape / right-click)
         GameEvents.on(EventNames.BUILD_MODE_EXIT, () => this._deactivate());
+        GameEvents.on(EventNames.ROAD_MODE_EXIT,  () => this._deactivate());
 
         // Update price colours when resources change
         GameEvents.on(EventNames.RESOURCES_CHANGED, () => this._updatePriceColors());
@@ -139,7 +148,7 @@ export class BuildingMenu {
      * Extensible: add new condition types here as the game grows.
      */
     _checkRequirements(id) {
-        const config = BUILDING_CONFIGS[id];
+        const config = id === 'ROAD' ? ROAD_CONFIG : BUILDING_CONFIGS[id];
         if (!config.requires || config.requires.length === 0) return true;
         return config.requires.every(req => {
             if (req.type === 'buildingPlaced') {
@@ -166,10 +175,10 @@ export class BuildingMenu {
                 for (const ic of icons) ic.setVisible(true);
                 lockedLabel.setVisible(false);
             } else {
-                // If this locked building was in active build mode, cancel it
+                // If this locked entry was active, cancel the appropriate mode
                 if (this._activeId === id) {
                     this._deactivate();
-                    GameEvents.emit(EventNames.BUILD_MODE_EXIT);
+                    GameEvents.emit(id === 'ROAD' ? EventNames.ROAD_MODE_EXIT : EventNames.BUILD_MODE_EXIT);
                 }
                 btn.setAlpha(LOCKED_ALPHA).disableInteractive();
                 lbl.setAlpha(LOCKED_ALPHA);
@@ -177,11 +186,7 @@ export class BuildingMenu {
                 for (const ic of icons) ic.setVisible(false);
 
                 // Show what's needed
-                const firstReq = BUILDING_CONFIGS[id].requires[0];
-                if (firstReq?.type === 'buildingPlaced') {
-                    const reqLabel = BUILDING_CONFIGS[firstReq.configId]?.label ?? firstReq.configId;
-                    lockedLabel.setText(`Needs: ${reqLabel}`).setVisible(true);
-                }
+                lockedLabel.setText(this._lockedLabelText(id)).setVisible(true);
             }
         }
     }
@@ -195,6 +200,17 @@ export class BuildingMenu {
             const color = this._resourceSystem.canAfford(cost) ? '#ffdd88' : '#ff4444';
             for (const t of texts) t.setColor(color);
         }
+    }
+
+    // Also fix locked label for ROAD (uses ROAD_CONFIG.requires)
+    _lockedLabelText(id) {
+        const config   = id === 'ROAD' ? ROAD_CONFIG : BUILDING_CONFIGS[id];
+        const firstReq = config.requires?.[0];
+        if (firstReq?.type === 'buildingPlaced') {
+            const reqLabel = BUILDING_CONFIGS[firstReq.configId]?.label ?? firstReq.configId;
+            return `Needs: ${reqLabel}`;
+        }
+        return '';
     }
 
     // ─── Active state ──────────────────────────────────────────────────────────

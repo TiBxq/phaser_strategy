@@ -100,6 +100,7 @@ export class TileMap {
             ownedBy: null,   // uid of building that claimed this tile for production
             height: 0,       // elevation 0–3
             isRamp: false,   // true when GRASS tile transitions height down to a neighbor
+            isRoad: false,   // true when a road has been placed on this tile
             resources: TILE_TYPES[typeId].initialResources,  // remaining harvestable units
         };
     }

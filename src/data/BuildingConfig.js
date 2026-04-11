@@ -166,3 +166,15 @@ export const BUILDING_CONFIGS = Object.freeze({
         description: '2×2 building. Increases all resource caps by 100.',
     },
 });
+
+/**
+ * Pseudo-config for Road — not a building, used only by BuildingMenu for display.
+ * Roads are 1×1 tiles placed via RoadSystem, not BuildSystem.
+ */
+export const ROAD_CONFIG = Object.freeze({
+    id: 'ROAD',
+    label: 'Road',
+    cost: { stone: 1, money: 2 },
+    requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+    description: '1×1 path tile. Connects buildings to Town Hall. 1 stone + 2 money each.',
+});

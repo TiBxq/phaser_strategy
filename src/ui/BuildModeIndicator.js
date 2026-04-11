@@ -1,4 +1,5 @@
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
+import { ROAD_CONFIG } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
@@ -47,10 +48,21 @@ export class BuildModeIndicator {
             this._hintText.setVisible(true);
         });
 
-        GameEvents.on(EventNames.BUILD_MODE_EXIT, () => {
-            this._bg.setVisible(false);
-            this._nameText.setVisible(false);
-            this._hintText.setVisible(false);
+        GameEvents.on(EventNames.BUILD_MODE_EXIT, () => this._hide());
+
+        GameEvents.on(EventNames.ROAD_MODE_ENTER, () => {
+            this._nameText.setText(`Placing: ${ROAD_CONFIG.label}`);
+            this._bg.setVisible(true);
+            this._nameText.setVisible(true);
+            this._hintText.setVisible(true);
         });
+
+        GameEvents.on(EventNames.ROAD_MODE_EXIT, () => this._hide());
+    }
+
+    _hide() {
+        this._bg.setVisible(false);
+        this._nameText.setVisible(false);
+        this._hintText.setVisible(false);
     }
 }

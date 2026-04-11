@@ -37,6 +37,7 @@ export function tileToWorld(col, row, height = 0) {
 /** Returns the texture key for a tile, incorporating height. */
 function tileTextureKey(tile) {
     if (tile.isField) return 'tile-field';
+    if (tile.isRoad)  return `tile-road-h${tile.height}`;
     const base = TILE_TYPES[tile.type].textureKey; // e.g. 'tile-grass'
     return `${base}-h${tile.height}`;
 }
@@ -135,10 +136,17 @@ export class MapRenderer {
             .setOrigin(0.5, 1)
             .setDepth(DEPTH_TILE_HOVER)
             .setVisible(false);
+
+        this._roadGhostSprite = this.scene.add.image(0, 0, 'tile-road-h0')
+            .setOrigin(0.5, 1)
+            .setDepth(DEPTH_TILE_HOVER)
+            .setVisible(false)
+            .setAlpha(0.75);
     }
 
     _bindEvents() {
         this._buildMode = false;
+        this._roadMode  = false;
 
         GameEvents.on(EventNames.BUILD_MODE_ENTER, () => {
             this._buildMode = true;
@@ -148,8 +156,17 @@ export class MapRenderer {
             this._buildMode = false;
         });
 
+        GameEvents.on(EventNames.ROAD_MODE_ENTER, () => {
+            this._roadMode = true;
+            this._highlightSprite.setVisible(false);
+        });
+        GameEvents.on(EventNames.ROAD_MODE_EXIT, () => {
+            this._roadMode = false;
+            this.hideRoadGhost();
+        });
+
         GameEvents.on(EventNames.TILE_HOVERED, ({ col, row }) => {
-            if (this._buildMode) return;
+            if (this._buildMode || this._roadMode) return;
             this.highlightTile(col, row);
         });
 
@@ -191,6 +208,22 @@ export class MapRenderer {
     clearSelection() {
         for (const s of this._selectedSprites) s.destroy();
         this._selectedSprites = [];
+    }
+
+    /** Show a ghost road tile at (col, row) tinted green/red for valid/invalid. */
+    showRoadGhost(col, row, valid) {
+        const tile = this.tileMap.getTile(col, row);
+        if (!tile) { this.hideRoadGhost(); return; }
+        const { x, y } = tileToWorld(col, row, tile.height);
+        this._roadGhostSprite
+            .setTexture(`tile-road-h${tile.height}`)
+            .setPosition(x, y)
+            .setTint(valid ? 0x00ff88 : 0xff4444)
+            .setVisible(true);
+    }
+
+    hideRoadGhost() {
+        this._roadGhostSprite.setVisible(false);
     }
 
     /** Refresh the texture of a single tile (e.g. after it becomes a field). */

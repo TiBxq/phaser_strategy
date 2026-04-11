@@ -32,7 +32,9 @@ export class Preloader extends Phaser.Scene {
 
     create() {
         this._generateTileTexturesFromSpritesheet();
+        this._generateRoadTextures();
         this._generateTileOverlays();
+        this._generateNoRoadIcon();
         this._generateIconTextures();
         this.scene.start('Game');
     }
@@ -121,6 +123,43 @@ export class Preloader extends Phaser.Scene {
     }
 
     /**
+     * Generate procedural road tile textures for each height variant (h0–hN).
+     *
+     * Canvas size: TILE_W × (TILE_W + h * HEIGHT_STEP), same as spritesheet tiles.
+     * The deco band (top 16px) is left transparent so it does not obscure tiles
+     * behind it — only the diamond face and cliff wall bands are drawn.
+     *
+     * Diamond face (interactive area):
+     *   top=(32, deco)  right=(64, deco+hh)  bottom=(32, deco+TILE_H)  left=(0, deco+hh)
+     * Cliff wall: a TILE_DEPTH-tall strip at y = deco+TILE_H, plus one per height level.
+     */
+    _generateRoadTextures() {
+        const hw   = TILE_W / 2;   // 32
+        const hh   = TILE_H / 2;   // 16
+        const deco = TILE_DEPTH;   // 16 — transparent band above the interactive diamond
+
+        const ROAD_TOP = 0x9B8B6A;  // tan packed-dirt surface
+
+        for (let h = 0; h <= MAX_TILE_HEIGHT; h++) {
+            const canvasH = TILE_W + h * HEIGHT_STEP;
+            const g = this.make.graphics({ x: 0, y: 0, add: false });
+
+            // Diamond face only — roads are surface markings, not 3D blocks.
+            // The underlying grass tile provides all isometric depth; no cliff strip needed.
+            g.fillStyle(ROAD_TOP, 1);
+            g.fillPoints([
+                { x: hw,     y: deco          },
+                { x: TILE_W, y: deco + hh     },
+                { x: hw,     y: deco + TILE_H },
+                { x: 0,      y: deco + hh     },
+            ], true);
+
+            g.generateTexture(`tile-road-h${h}`, TILE_W, canvasH);
+            g.destroy();
+        }
+    }
+
+    /**
      * Generate overlay textures (hover highlight, selection, ghost, worker).
      * These must be 64×64 to match the 2× scaled tile sprites.
      * TILE_H=32, effective TILE_DEPTH=32 → CH=64.
@@ -167,6 +206,27 @@ export class Preloader extends Phaser.Scene {
         g.strokeRect(hw - 4, cy + 1, 8, 6);
 
         g.generateTexture(key, cw, ch);
+        g.destroy();
+    }
+
+    _generateNoRoadIcon() {
+        const S  = 20;  // icon size in pixels
+        const cx = S / 2;
+        const cy = S / 2;
+        const g  = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Red filled circle with a dark border
+        g.fillStyle(0xdd2222, 1);
+        g.fillCircle(cx, cy, cx);
+        g.lineStyle(1.5, 0x880000, 1);
+        g.strokeCircle(cx, cy, cx - 0.75);
+
+        // White exclamation mark: body bar + dot
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(cx - 1.5, 4,  3, 7);   // body
+        g.fillRect(cx - 1.5, 13, 3, 3);   // dot
+
+        g.generateTexture('icon-no-road', S, S);
         g.destroy();
     }
 

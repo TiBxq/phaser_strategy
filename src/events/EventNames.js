@@ -55,4 +55,20 @@ export const EventNames = Object.freeze({
     // A building was upgraded to the next tier
     // payload: { building }
     BUILDING_UPGRADED: 'building:upgraded',
+
+    // Player entered road-placement mode
+    ROAD_MODE_ENTER: 'road:mode_enter',
+
+    // Player exited road-placement mode
+    ROAD_MODE_EXIT: 'road:mode_exit',
+
+    // Player clicked a tile while in road mode — payload: { col, row }
+    ROAD_PLACEMENT_REQUEST: 'road:placement_request',
+
+    // A road tile was successfully placed — payload: { col, row }
+    ROAD_PLACED: 'road:placed',
+
+    // One or more buildings changed road-connectivity state
+    // payload: { changed: Array<{ building, wasConnected }> }
+    BUILDING_CONNECTIVITY_CHANGED: 'building:connectivity_changed',
 });

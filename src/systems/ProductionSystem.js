@@ -25,6 +25,7 @@ export class ProductionSystem {
         const yields   = [];
 
         for (const building of this.buildSystem.placedBuildings.values()) {
+            if (!building.isConnected) continue;
             const config = BUILDING_CONFIGS[building.configId];
             if (!config.producesResource) continue;
 

@@ -12,6 +12,8 @@ export class BuildSystem {
         // Map<uid, BuildingInstance>
         this.placedBuildings = new Map();
         this._nextUid = 0;
+        // Set from Game.js after both systems are created
+        this.roadSystem = null;
     }
 
     // ─── Validation ────────────────────────────────────────────────────────────
@@ -24,6 +26,14 @@ export class BuildSystem {
         const config = BUILDING_CONFIGS[configId];
         if (!config) return { valid: false, reason: 'Unknown building type.' };
 
+        // Town Hall may only be placed once
+        if (configId === 'TOWN_HALL') {
+            for (const b of this.placedBuildings.values()) {
+                if (b.configId === 'TOWN_HALL')
+                    return { valid: false, reason: 'Town Hall already placed.' };
+            }
+        }
+
         // Collect all 4 footprint tiles
         const footprint = FOOTPRINT.map(([dc, dr]) => tileMap.getTile(col + dc, row + dr));
 
@@ -33,7 +43,7 @@ export class BuildSystem {
         if (footprint.some(t => !config.buildableOn.includes(t.type)))
             return { valid: false, reason: `Must be built on ${config.buildableOn.join(' or ')}.` };
 
-        if (footprint.some(t => t.buildingId || t.isField || t.ownedBy))
+        if (footprint.some(t => t.buildingId || t.isField || t.ownedBy || t.isRoad))
             return { valid: false, reason: 'Tile already occupied.' };
 
         // Reject uneven terrain and ramps
@@ -77,6 +87,7 @@ export class BuildSystem {
             configId,
             col,
             row,
+            isConnected: false,  // resolved after onPlace so fieldTiles are populated
             assignedVillagers: 0,
             fieldTiles: [],    // block anchors {col, row} for Farm 2×2 field blocks
             forestTiles: [],   // individual FOREST tile positions for Lumbermill
@@ -88,12 +99,9 @@ export class BuildSystem {
             tileMap.getTile(col + dc, row + dr).buildingId = uid;
         }
 
-        // Handle onPlace side-effects
+        // Handle onPlace side-effects that affect tile state.
+        // spawnVillager is deferred until after connectivity is known.
         switch (config.onPlace) {
-            case 'spawnVillager':
-                villagerManager.addVillagers(config.villagerCapacity);
-                break;
-
             case 'spawnFields':
                 this._claimFieldBlocks(tileMap, col, row, uid, building);
                 break;
@@ -111,6 +119,22 @@ export class BuildSystem {
             case 'increaseStorageCap':
                 this.resourceSystem.setCap(this.resourceSystem.getCap() + CAP_PER_WAREHOUSE);
                 break;
+        }
+
+        // Determine road connectivity now that fieldTiles are populated.
+        // Town Hall is always the network root → always connected.
+        if (configId === 'TOWN_HALL') {
+            building.isConnected = true;
+        } else if (this.roadSystem) {
+            const th = this._getTownHall();
+            building.isConnected = th
+                ? this.roadSystem.isBuildingConnected(building, tileMap, th)
+                : false;
+        }
+
+        // Spawn villagers only if connected; otherwise deferred to connectivity gain.
+        if (config.onPlace === 'spawnVillager' && building.isConnected) {
+            villagerManager.addVillagers(config.villagerCapacity);
         }
 
         this.placedBuildings.set(uid, building);
@@ -195,6 +219,13 @@ export class BuildSystem {
         return null;
     }
 
+    _getTownHall() {
+        for (const b of this.placedBuildings.values()) {
+            if (b.configId === 'TOWN_HALL') return b;
+        }
+        return null;
+    }
+
     // ─── Private helpers ───────────────────────────────────────────────────────
 
     /**
@@ -229,7 +260,7 @@ export class BuildSystem {
             const t = tileMap.getTile(fc + dc, fr + dr);
             if (!t) return false;
             if (t.type !== 'GRASS') return false;
-            if (t.buildingId || t.isField || t.ownedBy) return false;
+            if (t.buildingId || t.isField || t.ownedBy || t.isRoad) return false;
             if (t.isRamp) return false;
             if (t.height !== requiredHeight) return false;
         }

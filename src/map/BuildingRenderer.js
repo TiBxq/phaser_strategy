@@ -5,6 +5,7 @@ import { EventNames } from '../events/EventNames.js';
 import {
     LAYER_FIELD, LAYER_WORKER, LAYER_BUILDING, LAYER_GHOST_TILE,
     DEPTH_GHOST_BUILDING, DEPTH_SELECTION_OVERLAY, HEIGHT_DEPTH_BIAS,
+    DEPTH_FLOATING_LABEL,
 } from '../config/DepthLayers.js';
 
 // 2×2 footprint offsets
@@ -22,6 +23,8 @@ export class BuildingRenderer {
         this._fieldSprites = new Map();
         // Map<'col_row', Phaser.GameObjects.Image> for worker overlays
         this._workerSprites = new Map();
+        // Map<uid, Phaser.GameObjects.Image> for "no road connection" warning icons
+        this._noRoadSprites = new Map();
         // Ghost sprites
         this._ghost = null;
         this._currentGhostConfigId = null;
@@ -37,6 +40,11 @@ export class BuildingRenderer {
     _bindEvents() {
         GameEvents.on(EventNames.BUILDING_PLACED, ({ building }) => {
             this._addBuilding(building);
+            this._refreshNoRoadIcons();
+        });
+
+        GameEvents.on(EventNames.BUILDING_CONNECTIVITY_CHANGED, () => {
+            this._refreshNoRoadIcons();
         });
 
         GameEvents.on(EventNames.BUILDING_REMOVED, ({ uid }) => {
@@ -144,6 +152,32 @@ export class BuildingRenderer {
         }
     }
 
+    // ─── No-road-connection icons ──────────────────────────────────────────────
+
+    _refreshNoRoadIcons() {
+        // Destroy all existing warning icons and rebuild from scratch
+        for (const s of this._noRoadSprites.values()) s.destroy();
+        this._noRoadSprites.clear();
+
+        if (!this._buildSystem) return;
+        for (const building of this._buildSystem.placedBuildings.values()) {
+            if (!building.isConnected) this._addNoRoadIcon(building);
+        }
+    }
+
+    _addNoRoadIcon(building) {
+        const anchorTile = this.tileMap.getTile(building.col, building.row);
+        const anchorH    = anchorTile ? anchorTile.height : 0;
+        const { x, y }  = tileToWorld(building.col, building.row, anchorH);
+
+        // Place the icon near the top-centre of the building sprite.
+        // Buildings are ~96px tall; anchor is at bottom → y-72 is upper third.
+        const sprite = this.scene.add.image(x, y - 72, 'icon-no-road')
+            .setOrigin(0.5, 0.5)
+            .setDepth(DEPTH_FLOATING_LABEL);
+        this._noRoadSprites.set(building.uid, sprite);
+    }
+
     // ─── Ghost preview ─────────────────────────────────────────────────────────
 
     showGhost(configId) {
@@ -235,7 +269,7 @@ export class BuildingRenderer {
             const tile = this.tileMap.getTile(fieldCol + deltaCol, fieldRow + deltaRow);
             if (!tile) return false;
             if (tile.type !== 'GRASS') return false;
-            if (tile.buildingId || tile.isField || tile.ownedBy) return false;
+            if (tile.buildingId || tile.isField || tile.ownedBy || tile.isRoad) return false;
             if (tile.isRamp) return false;
             if (tile.height !== requiredHeight) return false;
         }

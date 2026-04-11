@@ -8,6 +8,8 @@ import { VillagerManager } from '../systems/VillagerManager.js';
 import { ProductionSystem } from '../systems/ProductionSystem.js';
 import { VillagerRenderer } from '../villagers/VillagerRenderer.js';
 import { FloatingLabels } from '../ui/FloatingLabels.js';
+import { RoadSystem } from '../systems/RoadSystem.js';
+import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 import { MAP_SIZE } from '../map/TileMap.js';
@@ -21,6 +23,8 @@ export class Game extends Phaser.Scene {
         // ── Systems ────────────────────────────────────────────────────────────
         this.resourceSystem  = new ResourceSystem();
         this.buildSystem     = new BuildSystem(this.resourceSystem);
+        this.roadSystem      = new RoadSystem();
+        this.buildSystem.roadSystem = this.roadSystem;
         this.villagerManager = new VillagerManager();
 
         // ── Map ────────────────────────────────────────────────────────────────
@@ -42,7 +46,7 @@ export class Game extends Phaser.Scene {
         this._setupCamera();
 
         // ── Input ──────────────────────────────────────────────────────────────
-        this.inputMode           = 'idle';   // 'idle' | 'build'
+        this.inputMode           = 'idle';   // 'idle' | 'build' | 'road'
         this.pendingBuildConfigId = null;
         this._selectedTile       = null;
 
@@ -59,6 +63,38 @@ export class Game extends Phaser.Scene {
             this.inputMode            = 'idle';
             this.pendingBuildConfigId = null;
             this.buildingRenderer.hideGhost();
+        });
+
+        GameEvents.on(EventNames.ROAD_MODE_ENTER, () => {
+            this.inputMode = 'road';
+            this.buildingRenderer.hideGhost();
+        });
+
+        GameEvents.on(EventNames.ROAD_MODE_EXIT, () => {
+            if (this.inputMode === 'road') this.inputMode = 'idle';
+            this.mapRenderer.hideRoadGhost();
+        });
+
+        GameEvents.on(EventNames.ROAD_PLACEMENT_REQUEST, ({ col, row }) => {
+            const result = this.roadSystem.canPlace(col, row, this.tileMap, this.resourceSystem);
+            if (!result.valid) {
+                GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: result.reason });
+                return;
+            }
+            this.roadSystem.place(col, row, this.tileMap, this.resourceSystem, this.buildSystem);
+            this.mapRenderer.refreshTile(col, row);
+        });
+
+        // When buildings gain road connectivity, trigger any deferred onPlace effects.
+        GameEvents.on(EventNames.BUILDING_CONNECTIVITY_CHANGED, ({ changed }) => {
+            for (const { building, wasConnected } of changed) {
+                if (!wasConnected && building.isConnected) {
+                    const config = BUILDING_CONFIGS[building.configId];
+                    if (config?.onPlace === 'spawnVillager') {
+                        this.villagerManager.addVillagers(config.villagerCapacity);
+                    }
+                }
+            }
         });
 
         GameEvents.on(EventNames.TILE_DEPLETED, ({ col, row, isBuildingFootprint }) => {
@@ -136,9 +172,13 @@ export class Game extends Phaser.Scene {
     // ─── Input ─────────────────────────────────────────────────────────────────
 
     _setupInput() {
-        // Combined pointer-down: right = pan/cancel, left = build placement
+        // Combined pointer-down: right = pan/cancel, left = build/road placement
         this.input.on('pointerdown', (pointer) => {
             if (pointer.rightButtonDown()) {
+                if (this.inputMode === 'road') {
+                    GameEvents.emit(EventNames.ROAD_MODE_EXIT);
+                    return;
+                }
                 if (this.inputMode === 'build') {
                     GameEvents.emit(EventNames.BUILD_MODE_EXIT);
                     return;
@@ -157,6 +197,12 @@ export class Game extends Phaser.Scene {
                         col: tile.col,
                         row: tile.row,
                     });
+                }
+            } else if (pointer.leftButtonDown() && this.inputMode === 'road') {
+                const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+                const tile = worldToTile(worldPoint.x, worldPoint.y);
+                if (tile) {
+                    GameEvents.emit(EventNames.ROAD_PLACEMENT_REQUEST, { col: tile.col, row: tile.row });
                 }
             }
         });
@@ -183,6 +229,19 @@ export class Game extends Phaser.Scene {
                     this.buildingRenderer.hideGhost();
                 }
             }
+
+            if (this.inputMode === 'road') {
+                const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+                const tile = worldToTile(worldPoint.x, worldPoint.y);
+                if (tile) {
+                    const result = this.roadSystem.canPlace(
+                        tile.col, tile.row, this.tileMap, this.resourceSystem,
+                    );
+                    this.mapRenderer.showRoadGhost(tile.col, tile.row, result.valid);
+                } else {
+                    this.mapRenderer.hideRoadGhost();
+                }
+            }
         });
 
         this.input.on('pointerup', () => {
@@ -192,7 +251,7 @@ export class Game extends Phaser.Scene {
         // Tile selection wired through tile sprites in MapRenderer.
         // Handle deselect on clicking empty space or pressing Escape.
         GameEvents.on(EventNames.TILE_SELECTED, ({ col, row, tile }) => {
-            if (this.inputMode === 'build') return;
+            if (this.inputMode === 'build' || this.inputMode === 'road') return;
             this._selectedTile = { col, row, tile };
             // Highlight building footprint + claimed tiles, or just the single tile
             const building = this.buildSystem.getBuildingAt(col, row);
@@ -207,7 +266,9 @@ export class Game extends Phaser.Scene {
 
         // Escape key
         this.input.keyboard.on('keydown-ESC', () => {
-            if (this.inputMode === 'build') {
+            if (this.inputMode === 'road') {
+                GameEvents.emit(EventNames.ROAD_MODE_EXIT);
+            } else if (this.inputMode === 'build') {
                 GameEvents.emit(EventNames.BUILD_MODE_EXIT);
             } else if (this._selectedTile) {
                 GameEvents.emit(EventNames.TILE_DESELECTED);
