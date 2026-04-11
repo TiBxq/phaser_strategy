@@ -1,3 +1,6 @@
+/** Number of forest tiles required per Lumbermill worker slot. */
+export const FOREST_TILES_PER_WORKER = 4;
+
 /**
  * Central data-driven registry for all building types.
  * Adding a new building requires only a new entry here — no new classes.
@@ -105,7 +108,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         claimsTileType: 'FOREST',
         producesResource: 'wood',
         productionPerVillager: 2,
-        maxVillagers: 0,   // dynamic: floor(forestTiles.length / 4)
+        maxVillagers: 0,   // dynamic: ceil(forestTiles.length / FOREST_TILES_PER_WORKER)
         villagerCapacity: 0,
         onPlace: 'claimForest',
         requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],

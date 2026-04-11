@@ -1,4 +1,4 @@
-import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
+import { BUILDING_CONFIGS, FOREST_TILES_PER_WORKER } from '../data/BuildingConfig.js';
 import { FOOD_COST_PER_VILLAGER } from '../data/ResourceConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
@@ -39,9 +39,9 @@ export class ProductionSystem {
                 effectiveWorkers = Math.min(assigned, building.fieldTiles.length);
             }
 
-            // Lumbermill: one worker per 4 claimed forest tiles (floor division)
+            // Lumbermill: ceil(forestTiles / 4) — 1 worker per 1–4 tiles, 2 per 5–8, etc.
             if (building.configId === 'LUMBERMILL') {
-                effectiveWorkers = Math.min(assigned, Math.floor(building.forestTiles.length / 4));
+                effectiveWorkers = Math.min(assigned, Math.ceil(building.forestTiles.length / FOREST_TILES_PER_WORKER));
             }
 
             // Quarry: stop entirely when all footprint rocks are depleted

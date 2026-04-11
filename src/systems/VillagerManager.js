@@ -1,4 +1,4 @@
-import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
+import { BUILDING_CONFIGS, FOREST_TILES_PER_WORKER } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
@@ -29,10 +29,10 @@ export class VillagerManager {
         const current     = this.assignments.get(buildingUid) ?? 0;
         // Dynamic cap for tile-based buildings:
         //   Farm: 1 worker per 2×2 field block (fieldTiles = block anchors)
-        //   Lumbermill: floor(forestTiles / 4) — one worker per 4 forest tiles
+        //   Lumbermill: ceil(forestTiles / 4) — 1 worker per 1–4 tiles, 2 per 5–8, etc.
         //   Others: static config.maxVillagers
         const maxAllowed  = config.claimsTileType === 'FOREST'
-            ? Math.floor(building.forestTiles.length / 4)
+            ? Math.ceil(building.forestTiles.length / FOREST_TILES_PER_WORKER)
             : config.claimsTileType
                 ? building.fieldTiles.length
                 : config.maxVillagers;

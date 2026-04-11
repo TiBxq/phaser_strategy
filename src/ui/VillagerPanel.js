@@ -1,4 +1,4 @@
-import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
+import { BUILDING_CONFIGS, FOREST_TILES_PER_WORKER } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
@@ -131,7 +131,7 @@ export class VillagerPanel {
         const config  = BUILDING_CONFIGS[building.configId];
         const assigned = building.assignedVillagers;
         const max      = config.claimsTileType === 'FOREST'
-            ? Math.floor(building.forestTiles.length / 4)
+            ? Math.ceil(building.forestTiles.length / FOREST_TILES_PER_WORKER)
             : config.claimsTileType
                 ? building.fieldTiles.length
                 : config.maxVillagers;

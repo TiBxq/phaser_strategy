@@ -58,7 +58,7 @@ export class TileInfoPanel {
             .setScrollFactor(0)
             .setDepth(1001);
 
-        this._noRoadText = scene.add.text(PX + 8, PY + 110, 'No road connection', {
+        this._noRoadText = scene.add.text(PX + 8, PY + 32, 'No road connection', {
             fontFamily: 'monospace',
             fontSize:   '10px',
             color:      '#ff4444',
@@ -186,7 +186,12 @@ export class TileInfoPanel {
                 body += `\nStone left: ${total}`;
             }
             this._bodyText.setText(body);
-            this._noRoadText.setVisible(!building.isConnected);
+            if (!building.isConnected) {
+                this._noRoadText.setY(PY + 32 + this._bodyText.height + 4);
+                this._noRoadText.setVisible(true);
+            } else {
+                this._noRoadText.setVisible(false);
+            }
 
             if (config.upgradesTo) {
                 this._currentUpgradeBuildingUid = building.uid;
