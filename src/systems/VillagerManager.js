@@ -17,6 +17,45 @@ export class VillagerManager {
     }
 
     /**
+     * Remove one villager from the pool (used by HungerSystem for starvation departures).
+     * Prefers removing from unassigned; otherwise unassigns from a non-food-producer first,
+     * falling back to food producers as a last resort.
+     */
+    removeVillager(buildSystem) {
+        if (this.total <= 0) return;
+        this.total--;
+        if (this.unassigned > 0) {
+            this.unassigned--;
+        } else {
+            // First pass: non-food buildings. Second pass: food producers (last resort).
+            if (!this._tryUnassignOne(buildSystem, uid => !this._isFoodProducer(buildSystem, uid))) {
+                this._tryUnassignOne(buildSystem, () => true);
+            }
+        }
+        this._emit();
+    }
+
+    /** Unassign one villager from the first building matching predicate. Returns true on success. */
+    _tryUnassignOne(buildSystem, predicate) {
+        for (const [uid, count] of this.assignments) {
+            if (count > 0 && predicate(uid)) {
+                const n = count - 1;
+                this.assignments.set(uid, n);
+                const b = buildSystem?.getBuilding(uid);
+                if (b) b.assignedVillagers = n;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Returns true if the building assigned to uid produces food. */
+    _isFoodProducer(buildSystem, uid) {
+        const b = buildSystem?.getBuilding(uid);
+        return b ? BUILDING_CONFIGS[b.configId]?.producesResource === 'food' : false;
+    }
+
+    /**
      * Assign `count` unassigned villagers to a building.
      * Respects the building's maxVillagers config.
      * Returns how many were actually assigned.

@@ -92,6 +92,8 @@ export class BuildSystem {
             fieldTiles: [],    // block anchors {col, row} for Farm 2×2 field blocks
             forestTiles: [],   // individual FOREST tile positions for Lumbermill
             rocksTiles: [],    // footprint ROCKS tile positions for Quarry
+            residents:    0,   // current residents (spawnVillager buildings only)
+            maxResidents: 0,   // max capacity (spawnVillager buildings only)
         };
 
         // Mark all 4 footprint tiles as occupied
@@ -133,8 +135,12 @@ export class BuildSystem {
         }
 
         // Spawn villagers only if connected; otherwise deferred to connectivity gain.
-        if (config.onPlace === 'spawnVillager' && building.isConnected) {
-            villagerManager.addVillagers(config.villagerCapacity);
+        if (config.onPlace === 'spawnVillager') {
+            building.maxResidents = config.villagerCapacity;
+            if (building.isConnected) {
+                building.residents = config.villagerCapacity;
+                villagerManager.addVillagers(config.villagerCapacity);
+            }
         }
 
         this.placedBuildings.set(uid, building);
@@ -173,7 +179,11 @@ export class BuildSystem {
         const extra = newConfig.villagerCapacity - oldConfig.villagerCapacity;
         building.configId = newConfig.id;
 
-        if (extra > 0) villagerManager.addVillagers(extra);
+        if (extra > 0) {
+            villagerManager.addVillagers(extra);
+            building.maxResidents = newConfig.villagerCapacity;
+            building.residents    = (building.residents ?? 0) + extra;
+        }
 
         GameEvents.emit(EventNames.BUILDING_UPGRADED, { building });
     }

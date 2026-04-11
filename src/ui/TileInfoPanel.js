@@ -67,6 +67,16 @@ export class TileInfoPanel {
             .setDepth(1001)
             .setVisible(false);
 
+        this._starvationText = scene.add.text(PX + 8, PY + 32, '', {
+            fontFamily: 'monospace',
+            fontSize:   '10px',
+            color:      '#ff8800',
+            wordWrap:   { width: 184 },
+        })
+            .setScrollFactor(0)
+            .setDepth(1001)
+            .setVisible(false);
+
         // Upgrade button (hidden by default)
         // btn-normal is 148×30; centered in 200px panel → left edge at PX+26
         this._upgradeBtn = scene.add.image(PX + 26, PY + 165, 'btn-normal')
@@ -149,6 +159,21 @@ export class TileInfoPanel {
                 this._show(this._currentTile.col, this._currentTile.row, this._currentTile.tile);
             }
         });
+
+        // Refresh when a villager departs or returns to the selected building
+        GameEvents.on(EventNames.VILLAGER_DEPARTED, ({ buildingUid }) => {
+            if (!this._currentTile) return;
+            const b = this.buildSystem.getBuildingAt(this._currentTile.col, this._currentTile.row);
+            if (b?.uid === buildingUid)
+                this._show(this._currentTile.col, this._currentTile.row, this._currentTile.tile);
+        });
+
+        GameEvents.on(EventNames.VILLAGER_RETURNED, ({ buildingUid }) => {
+            if (!this._currentTile) return;
+            const b = this.buildSystem.getBuildingAt(this._currentTile.col, this._currentTile.row);
+            if (b?.uid === buildingUid)
+                this._show(this._currentTile.col, this._currentTile.row, this._currentTile.tile);
+        });
     }
 
     _show(col, row, tile) {
@@ -185,12 +210,28 @@ export class TileInfoPanel {
                     (s, ft) => s + (this.tileMap.getTile(ft.col, ft.row)?.resources ?? 0), 0);
                 body += `\nStone left: ${total}`;
             }
+            // Resident count for spawnVillager buildings (House, Town Hall)
+            if (config.onPlace === 'spawnVillager' && building.maxResidents > 0) {
+                body += `\nResidents: ${building.residents}/${building.maxResidents}`;
+            }
             this._bodyText.setText(body);
+
             if (!building.isConnected) {
                 this._noRoadText.setY(PY + 32 + this._bodyText.height + 4);
                 this._noRoadText.setVisible(true);
             } else {
                 this._noRoadText.setVisible(false);
+            }
+
+            const lostCount = building.maxResidents - building.residents;
+            if (config.onPlace === 'spawnVillager' && lostCount > 0) {
+                const noRoadH = this._noRoadText.visible ? this._noRoadText.height + 4 : 0;
+                this._starvationText
+                    .setText(`${lostCount} villager${lostCount > 1 ? 's' : ''} left due to starvation`)
+                    .setY(PY + 32 + this._bodyText.height + 4 + noRoadH)
+                    .setVisible(true);
+            } else {
+                this._starvationText.setVisible(false);
             }
 
             if (config.upgradesTo) {
@@ -202,6 +243,7 @@ export class TileInfoPanel {
             }
         } else {
             this._noRoadText.setVisible(false);
+            this._starvationText.setVisible(false);
             this._titleText.setText(`Tile (${col}, ${row})`);
             const typeLabel = tile.isField
                 ? 'Farm Field'
@@ -266,6 +308,7 @@ export class TileInfoPanel {
         this._titleText.setVisible(false);
         this._bodyText.setVisible(false);
         this._noRoadText.setVisible(false);
+        this._starvationText.setVisible(false);
         this._clearUpgradeBtn();
     }
 }

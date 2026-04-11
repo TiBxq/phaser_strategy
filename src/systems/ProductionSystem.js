@@ -5,12 +5,19 @@ import { EventNames } from '../events/EventNames.js';
 
 const TICK_DELAY_MS = 5000;
 
+/** Returns true if the building produces food. Exempt from hunger efficiency penalties. */
+function isFoodProducer(building) {
+    return BUILDING_CONFIGS[building.configId]?.producesResource === 'food';
+}
+
 export class ProductionSystem {
     constructor(time, resourceSystem, buildSystem, villagerManager, tileMap) {
         this.resourceSystem  = resourceSystem;
         this.buildSystem     = buildSystem;
         this.villagerManager = villagerManager;
         this.tileMap         = tileMap;
+        /** Set by Game.js after construction. Provides production efficiency multiplier. */
+        this.hungerSystem    = null;
 
         time.addEvent({
             delay:         TICK_DELAY_MS,
@@ -49,7 +56,11 @@ export class ProductionSystem {
                 if (building.rocksTiles.length === 0) continue;
             }
 
-            const yield_ = config.productionPerVillager * effectiveWorkers;
+            // Food producers are exempt from hunger efficiency penalties
+            const mult   = (this.hungerSystem && !isFoodProducer(building))
+                ? this.hungerSystem.getEfficiencyMultiplier()
+                : 1.0;
+            const yield_ = Math.floor(config.productionPerVillager * effectiveWorkers * mult);
             this.resourceSystem.add(config.producesResource, yield_);
             produced[config.producesResource] = (produced[config.producesResource] ?? 0) + yield_;
             yields.push({ uid: building.uid, col: building.col, row: building.row,

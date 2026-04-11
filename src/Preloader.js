@@ -35,6 +35,7 @@ export class Preloader extends Phaser.Scene {
         this._generateRoadTextures();
         this._generateTileOverlays();
         this._generateNoRoadIcon();
+        this._generateStarvationIcon();
         this._generateIconTextures();
         this.scene.start('Game');
     }
@@ -227,6 +228,27 @@ export class Preloader extends Phaser.Scene {
         g.fillRect(cx - 1.5, 13, 3, 3);   // dot
 
         g.generateTexture('icon-no-road', S, S);
+        g.destroy();
+    }
+
+    _generateStarvationIcon() {
+        const S  = 20;
+        const cx = S / 2;
+        const cy = S / 2;
+        const g  = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Orange filled circle with a dark border
+        g.fillStyle(0xdd6600, 1);
+        g.fillCircle(cx, cy, cx);
+        g.lineStyle(1.5, 0x884400, 1);
+        g.strokeCircle(cx, cy, cx - 0.75);
+
+        // White exclamation mark: body bar + dot
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(cx - 1.5, 4,  3, 7);   // body
+        g.fillRect(cx - 1.5, 13, 3, 3);   // dot
+
+        g.generateTexture('icon-starving', S, S);
         g.destroy();
     }
 

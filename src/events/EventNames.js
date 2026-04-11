@@ -14,6 +14,18 @@ export const EventNames = Object.freeze({
     // Food hit 0 while villagers are alive
     STARVATION_WARNING: 'starvation:warning',
 
+    // Hunger state changed (fed → hungry → starving → fed)
+    // payload: { state: 'fed' | 'hungry' | 'starving' }
+    HUNGER_STATE_CHANGED: 'hunger:state_changed',
+
+    // A villager departed a residential building due to starvation
+    // payload: { buildingUid: string }
+    VILLAGER_DEPARTED: 'villager:departed',
+
+    // A villager returned to a residential building after recovery
+    // payload: { buildingUid: string }
+    VILLAGER_RETURNED: 'villager:returned',
+
     // Villager pool or assignment changed
     VILLAGERS_CHANGED: 'villagers:changed',
 

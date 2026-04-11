@@ -9,6 +9,7 @@ import { ProductionSystem } from '../systems/ProductionSystem.js';
 import { VillagerRenderer } from '../villagers/VillagerRenderer.js';
 import { FloatingLabels } from '../ui/FloatingLabels.js';
 import { RoadSystem } from '../systems/RoadSystem.js';
+import { HungerSystem } from '../systems/HungerSystem.js';
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
@@ -37,6 +38,10 @@ export class Game extends Phaser.Scene {
             this.villagerManager,
             this.tileMap,
         );
+        this.hungerSystem = new HungerSystem(
+            this.resourceSystem, this.buildSystem, this.villagerManager);
+        this.productionSystem.hungerSystem = this.hungerSystem;
+
         this.mapRenderer      = new MapRenderer(this, this.tileMap);
         this.buildingRenderer = new BuildingRenderer(this, this.tileMap, this.buildSystem);
         this.villagerRenderer = new VillagerRenderer(this, this.tileMap);
@@ -92,6 +97,7 @@ export class Game extends Phaser.Scene {
                     const config = BUILDING_CONFIGS[building.configId];
                     if (config?.onPlace === 'spawnVillager') {
                         this.villagerManager.addVillagers(config.villagerCapacity);
+                        building.residents = config.villagerCapacity;
                     }
                 }
             }

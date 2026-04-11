@@ -25,6 +25,8 @@ export class BuildingRenderer {
         this._workerSprites = new Map();
         // Map<uid, Phaser.GameObjects.Image> for "no road connection" warning icons
         this._noRoadSprites = new Map();
+        // Map<uid, Phaser.GameObjects.Image> for starvation departure warning icons
+        this._starvationSprites = new Map();
         // Ghost sprites
         this._ghost = null;
         this._currentGhostConfigId = null;
@@ -73,6 +75,22 @@ export class BuildingRenderer {
             const newConfig = BUILDING_CONFIGS[building.configId];
             if (sprite) sprite.setTexture(newConfig.textureKey);
             if (this._selectionOverlay?.visible) this._showSelectionOverlay(building);
+        });
+
+        GameEvents.on(EventNames.VILLAGER_DEPARTED, ({ buildingUid }) => {
+            const b = this._buildSystem?.getBuilding(buildingUid);
+            if (b) this._addStarvationIcon(b);
+        });
+
+        GameEvents.on(EventNames.VILLAGER_RETURNED, ({ buildingUid }) => {
+            const b = this._buildSystem?.getBuilding(buildingUid);
+            if (b && b.residents >= b.maxResidents) {
+                const sprite = this._starvationSprites.get(buildingUid);
+                if (sprite) {
+                    sprite.destroy();
+                    this._starvationSprites.delete(buildingUid);
+                }
+            }
         });
     }
 
@@ -176,6 +194,19 @@ export class BuildingRenderer {
             .setOrigin(0.5, 0.5)
             .setDepth(DEPTH_FLOATING_LABEL);
         this._noRoadSprites.set(building.uid, sprite);
+    }
+
+    _addStarvationIcon(building) {
+        if (this._starvationSprites.has(building.uid)) return;
+        const anchorTile = this.tileMap.getTile(building.col, building.row);
+        const anchorH    = anchorTile ? anchorTile.height : 0;
+        const { x, y }  = tileToWorld(building.col, building.row, anchorH);
+
+        // Offset +22px right so it sits beside icon-no-road (centered at x, y-72)
+        const sprite = this.scene.add.image(x + 22, y - 72, 'icon-starving')
+            .setOrigin(0.5, 0.5)
+            .setDepth(DEPTH_FLOATING_LABEL);
+        this._starvationSprites.set(building.uid, sprite);
     }
 
     // ─── Ghost preview ─────────────────────────────────────────────────────────
