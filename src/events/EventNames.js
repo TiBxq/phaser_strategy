@@ -96,4 +96,13 @@ export const EventNames = Object.freeze({
 
     // Warriors assigned to / unassigned from a Barracks changed — payload: { buildingUid, building }
     WARRIORS_CHANGED: 'warriors:changed',
+
+    // A quest was started (first quest or after previous completed) — payload: { quest }
+    QUEST_STARTED: 'quest:started',
+
+    // A single task within the active quest was completed — payload: { quest, task }
+    QUEST_TASK_COMPLETED: 'quest:task_completed',
+
+    // All tasks in the active quest are done — payload: { quest }
+    QUEST_COMPLETED: 'quest:completed',
 });

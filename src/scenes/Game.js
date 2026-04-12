@@ -11,6 +11,7 @@ import { FloatingLabels } from '../ui/FloatingLabels.js';
 import { RoadSystem } from '../systems/RoadSystem.js';
 import { HungerSystem } from '../systems/HungerSystem.js';
 import { WarriorRenderer } from '../warriors/WarriorRenderer.js';
+import { QuestSystem } from '../systems/QuestSystem.js';
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
@@ -42,6 +43,8 @@ export class Game extends Phaser.Scene {
         this.hungerSystem = new HungerSystem(
             this.resourceSystem, this.buildSystem, this.villagerManager);
         this.productionSystem.hungerSystem = this.hungerSystem;
+
+        this.questSystem = new QuestSystem(this.buildSystem, this.villagerManager);
 
         this.mapRenderer      = new MapRenderer(this, this.tileMap);
         this.buildingRenderer = new BuildingRenderer(this, this.tileMap, this.buildSystem);

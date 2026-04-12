@@ -1,0 +1,140 @@
+import { QUESTS } from '../data/QuestConfig.js';
+import { GameEvents } from '../events/GameEvents.js';
+import { EventNames } from '../events/EventNames.js';
+
+export class QuestSystem {
+    /**
+     * @param {import('./BuildSystem.js').BuildSystem} buildSystem
+     * @param {import('./VillagerManager.js').VillagerManager} villagerManager
+     */
+    constructor(buildSystem, villagerManager) {
+        this._buildSystem     = buildSystem;
+        this._villagerManager = villagerManager;
+
+        /** Index into QUESTS for the active quest. */
+        this._questIndex = 0;
+
+        /** taskId → boolean completion flag; only contains tasks for the active quest. */
+        this._taskStates = new Map();
+
+        // Wire game events to task-completion checks
+        GameEvents.on(EventNames.BUILDING_PLACED,
+            ({ building }) => this._onBuildingPlaced(building));
+
+        GameEvents.on(EventNames.BUILDING_CONNECTIVITY_CHANGED,
+            ({ changed }) => this._onConnectivityChanged(changed));
+
+        GameEvents.on(EventNames.VILLAGERS_CHANGED,
+            () => this._onVillagersChanged());
+
+        GameEvents.on(EventNames.WARRIORS_CHANGED,
+            () => this._onWarriorsChanged());
+
+        // Begin the first quest
+        this._startQuest(0);
+    }
+
+    // ─── Public API (used by QuestPanel) ──────────────────────────────────────
+
+    /** The currently active quest object from QuestConfig. */
+    get currentQuest() {
+        return QUESTS[this._questIndex];
+    }
+
+    /** Whether the given task (by id) has been completed. */
+    isTaskDone(taskId) {
+        return this._taskStates.get(taskId) ?? false;
+    }
+
+    /** True when the player has reached the terminal "Enjoy the Game!" quest. */
+    isComplete() {
+        return this.currentQuest.id === 'ENJOY';
+    }
+
+    // ─── Internal ──────────────────────────────────────────────────────────────
+
+    _startQuest(index) {
+        this._questIndex = index;
+        const quest = QUESTS[index];
+
+        this._taskStates.clear();
+        for (const task of quest.tasks) {
+            this._taskStates.set(task.id, false);
+        }
+
+        GameEvents.emit(EventNames.QUEST_STARTED, { quest });
+
+        // Terminal quest has no tasks — emit completed immediately so the panel
+        // can switch to its congratulation state.
+        if (quest.tasks.length === 0) {
+            GameEvents.emit(EventNames.QUEST_COMPLETED, { quest });
+        }
+    }
+
+    _completeTask(taskId) {
+        if (!this._taskStates.has(taskId)) return; // not a task in the active quest
+        if (this._taskStates.get(taskId))   return; // already done
+
+        this._taskStates.set(taskId, true);
+
+        const quest = this.currentQuest;
+        const task  = quest.tasks.find(t => t.id === taskId);
+        GameEvents.emit(EventNames.QUEST_TASK_COMPLETED, { quest, task });
+
+        // Check if every task in the quest is now done
+        if (quest.tasks.every(t => this._taskStates.get(t.id))) {
+            GameEvents.emit(EventNames.SHOW_NOTIFICATION,
+                { message: `Quest complete: ${quest.label}!` });
+            GameEvents.emit(EventNames.QUEST_COMPLETED, { quest });
+
+            const nextIndex = this._questIndex + 1;
+            if (nextIndex < QUESTS.length) {
+                this._startQuest(nextIndex);
+            }
+        }
+    }
+
+    // ─── Event handlers ────────────────────────────────────────────────────────
+
+    _onBuildingPlaced(building) {
+        for (const task of this.currentQuest.tasks) {
+            if (task.type === 'buildingPlaced' && task.configId === building.configId) {
+                this._completeTask(task.id);
+            }
+        }
+    }
+
+    _onConnectivityChanged(changed) {
+        for (const { building } of changed) {
+            if (building.isConnected && building.configId !== 'TOWN_HALL') {
+                this._completeTask('connect_road');
+                return;
+            }
+        }
+    }
+
+    _onVillagersChanged() {
+        for (const building of this._buildSystem.placedBuildings.values()) {
+            if (building.assignedVillagers >= 1) {
+                this._completeTask('assign_worker');
+                return;
+            }
+        }
+    }
+
+    _onWarriorsChanged() {
+        // Find the warriorsHired task in the current quest (if any)
+        const task = this.currentQuest.tasks.find(t => t.type === 'warriorsHired');
+        if (!task) return;
+
+        let total = 0;
+        for (const building of this._buildSystem.placedBuildings.values()) {
+            if (building.configId === 'BARRACKS') {
+                total += building.assignedVillagers;
+            }
+        }
+        if (total >= task.count) {
+            this._completeTask(task.id);
+        }
+    }
+}
