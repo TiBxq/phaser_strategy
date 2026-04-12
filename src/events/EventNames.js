@@ -93,4 +93,7 @@ export const EventNames = Object.freeze({
     // One or more buildings changed road-connectivity state
     // payload: { changed: Array<{ building, wasConnected }> }
     BUILDING_CONNECTIVITY_CHANGED: 'building:connectivity_changed',
+
+    // Warriors assigned to / unassigned from a Barracks changed — payload: { buildingUid, building }
+    WARRIORS_CHANGED: 'warriors:changed',
 });

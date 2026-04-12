@@ -136,7 +136,8 @@ export class VillagerPanel {
                 ? building.fieldTiles.length
                 : config.maxVillagers;
 
-        this._countLabel.setText(`Workers: ${assigned} / ${max}`);
+        const label = config.id === 'BARRACKS' ? 'Warriors' : 'Workers';
+        this._countLabel.setText(`${label}: ${assigned} / ${max}`);
         this._freeLabel.setText(`Free: ${this._unassigned}`);
     }
 

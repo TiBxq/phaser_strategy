@@ -93,6 +93,7 @@ export class BuildSystem {
             forestTiles: [],   // individual FOREST tile positions for Lumbermill
             rocksTiles: [],    // footprint ROCKS tile positions for Quarry
             ironTiles:  [],    // footprint IRON tile positions for Iron Mine
+            _smithyProgress: 0, // production cycle counter for Smithy (0–5)
             residents:    0,   // current residents (spawnVillager buildings only)
             maxResidents: 0,   // max capacity (spawnVillager buildings only)
             totalCost: { ...config.cost },  // cumulative cost (base + upgrades) for demolish refund

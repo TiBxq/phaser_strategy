@@ -28,11 +28,27 @@ export class UI extends Phaser.Scene {
 
         // Wire villager assignment events to VillagerManager
         GameEvents.on(EventNames.VILLAGER_ASSIGN_REQUEST, ({ buildingUid, count }) => {
+            const building = gameScene.buildSystem.getBuilding(buildingUid);
+            // Barracks: each warrior assignment costs 1 weapon
+            if (building?.configId === 'BARRACKS') {
+                if (!gameScene.resourceSystem.canAfford({ weapons: count })) {
+                    GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: 'Not enough weapons to train warrior.' });
+                    return;
+                }
+                gameScene.resourceSystem.spend({ weapons: count });
+            }
             gameScene.villagerManager.assign(buildingUid, count, gameScene.buildSystem);
+            if (building?.configId === 'BARRACKS') {
+                GameEvents.emit(EventNames.WARRIORS_CHANGED, { buildingUid, building });
+            }
         });
 
         GameEvents.on(EventNames.VILLAGER_UNASSIGN_REQUEST, ({ buildingUid, count }) => {
             gameScene.villagerManager.unassign(buildingUid, count, gameScene.buildSystem);
+            const building = gameScene.buildSystem.getBuilding(buildingUid);
+            if (building?.configId === 'BARRACKS') {
+                GameEvents.emit(EventNames.WARRIORS_CHANGED, { buildingUid, building });
+            }
         });
 
         GameEvents.on(EventNames.BUILDING_UPGRADE_REQUEST, ({ buildingUid }) => {

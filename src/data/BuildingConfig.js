@@ -19,7 +19,7 @@ export const FOREST_TILES_PER_WORKER = 4;
  *   maxVillagers        — max villagers (static cap; tile-based buildings use dynamic cap)
  *   villagerCapacity    — how many villagers this building HOUSES (House only)
  *   onPlace             — string token dispatched by BuildSystem after placement:
- *                         null | 'spawnVillager' | 'spawnFields' | 'claimForest' | 'increaseStorageCap' | 'initRocksTiles' | 'initIronTiles'
+ *                         null | 'spawnVillager' | 'spawnFields' | 'claimForest' | 'increaseStorageCap' | 'initRocksTiles' | 'initIronTiles' | (none for Smithy/Barracks)
  *   description         — short text shown in TileInfoPanel
  */
 export const BUILDING_CONFIGS = Object.freeze({
@@ -149,6 +149,43 @@ export const BUILDING_CONFIGS = Object.freeze({
         onPlace: 'initIronTiles',
         requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
         description: '2×2 building on iron. Mines the 4 tiles it occupies (400 iron total). Up to 6 workers → 1 iron/tick each.',
+    },
+
+    SMITHY: {
+        id: 'SMITHY',
+        label: 'Smithy',
+        textureKey: 'building-smithy',
+        cost: { food: 0, wood: 20, stone: 10, money: 30 },
+        buildableOn: ['GRASS'],
+        requiresAdjacentTo: null,
+        footprint: 2,
+        claimsTileType: null,
+        producesResource: 'weapons',
+        productionPerVillager: 1,
+        maxVillagers: 1,
+        maxWarriors: 0,
+        villagerCapacity: 0,
+        onPlace: null,
+        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+        description: '2×2 building. 1 worker consumes 10 iron over 5 cycles to forge 1 weapon.',
+    },
+
+    BARRACKS: {
+        id: 'BARRACKS',
+        label: 'Barracks',
+        textureKey: 'building-barracks',
+        cost: { food: 0, wood: 30, stone: 20, money: 40 },
+        buildableOn: ['GRASS'],
+        requiresAdjacentTo: null,
+        footprint: 2,
+        claimsTileType: null,
+        producesResource: null,
+        productionPerVillager: 0,
+        maxVillagers: 5,
+        villagerCapacity: 0,
+        onPlace: null,
+        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+        description: '2×2 building. Assign up to 5 villagers as warriors (1 weapon each). Upkeep: 2 money/warrior/tick.',
     },
 
     MARKET: {

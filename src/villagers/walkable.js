@@ -30,6 +30,23 @@ export function heightMoveCost(fromTile, toTile) {
  * @param {{ col: number, row: number } | null} exclude  Tile to exclude (e.g. current position)
  * @returns {{ col: number, row: number } | null}
  */
+/**
+ * Returns a random walkable tile within Manhattan `radius` of (centerCol, centerRow).
+ * Used by warriors to wander near their barracks.
+ */
+export function randomWalkableTileNear(tileMap, centerCol, centerRow, radius) {
+    const candidates = [];
+    for (let dr = -radius; dr <= radius; dr++) {
+        for (let dc = -radius; dc <= radius; dc++) {
+            if (Math.abs(dc) + Math.abs(dr) > radius) continue;
+            const t = tileMap.getTile(centerCol + dc, centerRow + dr);
+            if (isWalkable(t)) candidates.push(t);
+        }
+    }
+    if (!candidates.length) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
 export function randomWalkableTile(tileMap, exclude = null) {
     const candidates = [];
     for (let row = 0; row < MAP_SIZE; row++) {

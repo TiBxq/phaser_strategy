@@ -66,6 +66,20 @@ export class ProductionSystem {
                 if (building.ironTiles.length === 0) continue;
             }
 
+            // Smithy: 5-cycle production — 1 worker + 10 iron → 1 weapon
+            if (building.configId === 'SMITHY') {
+                if (building._smithyProgress < 5) building._smithyProgress++;
+                if (building._smithyProgress >= 5 && this.resourceSystem.canAfford({ iron: 10 })) {
+                    this.resourceSystem.spend({ iron: 10 });
+                    this.resourceSystem.add('weapons', 1);
+                    produced['weapons'] = (produced['weapons'] ?? 0) + 1;
+                    yields.push({ uid: building.uid, col: building.col, row: building.row,
+                                  resource: 'weapons', amount: 1 });
+                    building._smithyProgress = 0;
+                }
+                continue;  // skip normal per-tick production path
+            }
+
             // Food producers are exempt from hunger efficiency penalties
             const mult   = (this.hungerSystem && !isFoodProducer(building))
                 ? this.hungerSystem.getEfficiencyMultiplier()
@@ -103,6 +117,22 @@ export class ProductionSystem {
             }
             if (food === 0) {
                 GameEvents.emit(EventNames.STARVATION_WARNING);
+            }
+        }
+
+        // Warrior upkeep — 2 money per assigned warrior per tick across all Barracks
+        let warriorUpkeep = 0;
+        for (const b of this.buildSystem.placedBuildings.values()) {
+            if (b.configId === 'BARRACKS' && b.assignedVillagers > 0) {
+                warriorUpkeep += b.assignedVillagers * 2;
+            }
+        }
+        if (warriorUpkeep > 0) {
+            const money    = this.resourceSystem.get('money');
+            const toDeduct = Math.min(warriorUpkeep, money);
+            if (toDeduct > 0) {
+                this.resourceSystem.spend({ money: toDeduct });
+                consumed.money = (consumed.money ?? 0) + toDeduct;
             }
         }
 

@@ -5,10 +5,12 @@ import { EventNames } from '../events/EventNames.js';
 import { DEPTH_FLOATING_LABEL } from '../config/DepthLayers.js';
 
 const RESOURCE_COLORS = {
-    food:  '#44cc44',
-    wood:  '#cc9944',
-    stone: '#aaaaaa',
-    money: '#ddcc00',
+    food:    '#44cc44',
+    wood:    '#cc9944',
+    stone:   '#aaaaaa',
+    money:   '#ddcc00',
+    iron:    '#cc6600',
+    weapons: '#dddddd',
 };
 
 const ICON_SIZE = 16;

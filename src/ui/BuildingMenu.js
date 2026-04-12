@@ -28,7 +28,7 @@ const NUM_W      = 18;  // approximate width of a cost number (up to 3 digits at
 const ENTRY_W    = ICON_SIZE + ICON_GAP + NUM_W;
 
 // Displayed order of buildings in the menu ('ROAD' is a special pseudo-entry)
-const MENU_ORDER = ['TOWN_HALL', 'HOUSE', 'FARM', 'LUMBERMILL', 'QUARRY', 'IRON_MINE', 'MARKET', 'WAREHOUSE', 'ROAD'];
+const MENU_ORDER = ['TOWN_HALL', 'HOUSE', 'FARM', 'LUMBERMILL', 'QUARRY', 'IRON_MINE', 'SMITHY', 'BARRACKS', 'MARKET', 'WAREHOUSE', 'ROAD'];
 
 export class BuildingMenu {
     constructor(scene, resourceSystem, buildSystem) {

@@ -1,4 +1,4 @@
-export const RESOURCE_NAMES = ['food', 'wood', 'stone', 'money', 'iron'];
+export const RESOURCE_NAMES = ['food', 'wood', 'stone', 'money', 'iron', 'weapons'];
 
 export const DEFAULT_CAP = 200;
 export const CAP_PER_WAREHOUSE = 100;
@@ -9,6 +9,7 @@ export const STARTING_RESOURCES = Object.freeze({
     stone: 30,
     money: 100,
     iron: 0,
+    weapons: 0,
 });
 
 // Food consumed per villager per production tick

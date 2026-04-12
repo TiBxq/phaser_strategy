@@ -38,6 +38,8 @@ export class Preloader extends Phaser.Scene {
         this._generateStarvationIcon();
         this._generateIconTextures();
         this._generateIronMineTexture();
+        this._generateSmithyTexture();
+        this._generateBarracksTexture();
         this.scene.start('Game');
     }
 
@@ -303,6 +305,18 @@ export class Preloader extends Phaser.Scene {
             dest.refresh();
         }
 
+        // Weapons icon — small sword shape
+        const wepIcon = this.textures.createCanvas('icon-weapons', 16, 16);
+        const wCtx    = wepIcon.getContext();
+        wCtx.fillStyle = '#888888';
+        wCtx.fillRect(7, 1, 2, 10);    // blade
+        wCtx.fillStyle = '#bbbbbb';
+        wCtx.fillRect(7, 1, 2, 5);     // blade highlight
+        wCtx.fillStyle = '#664400';
+        wCtx.fillRect(4, 11, 8, 2);    // guard
+        wCtx.fillRect(7, 13, 2, 2);    // handle
+        wepIcon.refresh();
+
         // Iron icon — generated programmatically (no sheet frame available)
         const ironIcon = this.textures.createCanvas('icon-iron', 16, 16);
         const iCtx     = ironIcon.getContext();
@@ -331,6 +345,7 @@ export class Preloader extends Phaser.Scene {
 
         this._makeVillagerIcon('icon-villager');
         this._makeVillagerSprite('sprite-villager');
+        this._makeWarriorSprite('sprite-warrior');
     }
 
     _makePanel(key, w, h, color, alpha) {
@@ -376,6 +391,112 @@ export class Preloader extends Phaser.Scene {
         g.strokeCircle(5, 3, 3);
         g.strokeRect(2, 6, 6, 5);
         g.generateTexture(key, 10, 14);
+        g.destroy();
+    }
+
+    _makeWarriorSprite(key) {
+        const g = this.make.graphics({ x: 0, y: 0, add: false });
+        // Head
+        g.fillStyle(0xffcc88, 1);
+        g.fillCircle(5, 3, 3);
+        // Armor / body (red)
+        g.fillStyle(0xaa2222, 1);
+        g.fillRect(2, 6, 6, 5);
+        // Outline
+        g.lineStyle(1, 0x000000, 0.4);
+        g.strokeCircle(5, 3, 3);
+        g.strokeRect(2, 6, 6, 5);
+        g.generateTexture(key, 10, 14);
+        g.destroy();
+    }
+
+    /** Generate a 128×96 Smithy building sprite — dark forge with glowing fire. */
+    _generateSmithyTexture() {
+        const W = 128, H = 96;
+        const g = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Base platform
+        g.fillStyle(0x3a3030, 1);
+        g.fillRect(16, 60, 96, 30);
+        g.lineStyle(1, 0x222020, 0.9);
+        g.strokeRect(16, 60, 96, 30);
+
+        // Walls
+        g.fillStyle(0x4a3535, 1);
+        g.fillRect(24, 28, 80, 40);
+        g.lineStyle(1, 0x2a2020, 0.9);
+        g.strokeRect(24, 28, 80, 40);
+
+        // Forge fire window (orange glow)
+        g.fillStyle(0xff6600, 1);
+        g.fillRect(30, 36, 20, 20);
+        g.fillStyle(0xffaa00, 1);
+        g.fillRect(33, 39, 14, 14);
+        g.fillStyle(0xffff00, 0.8);
+        g.fillRect(36, 42, 8, 8);
+
+        // Anvil silhouette
+        g.fillStyle(0x222020, 1);
+        g.fillRect(65, 50, 24, 8);
+        g.fillRect(72, 58, 10, 6);
+
+        // Chimney
+        g.fillStyle(0x3a3030, 1);
+        g.fillRect(26, 8, 14, 24);
+        g.fillStyle(0x222020, 1);
+        g.fillRect(27, 6, 12, 6);
+
+        // Roof
+        g.fillStyle(0x2a2020, 1);
+        g.fillTriangle(20, 28, 108, 28, 64, 8);
+        g.lineStyle(1, 0x111010, 0.8);
+        g.strokeTriangle(20, 28, 108, 28, 64, 8);
+
+        g.generateTexture('building-smithy', W, H);
+        g.destroy();
+    }
+
+    /** Generate a 128×96 Barracks building sprite — grey stone with battlements and a red flag. */
+    _generateBarracksTexture() {
+        const W = 128, H = 96;
+        const g = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Base platform
+        g.fillStyle(0x3a3a3a, 1);
+        g.fillRect(16, 60, 96, 30);
+        g.lineStyle(1, 0x222222, 0.9);
+        g.strokeRect(16, 60, 96, 30);
+
+        // Main building
+        g.fillStyle(0x555555, 1);
+        g.fillRect(20, 24, 88, 44);
+        g.lineStyle(1, 0x333333, 0.9);
+        g.strokeRect(20, 24, 88, 44);
+
+        // Battlements (crenellations)
+        g.fillStyle(0x666666, 1);
+        for (let bx = 22; bx < 106; bx += 12) {
+            g.fillRect(bx, 14, 8, 12);
+        }
+
+        // Gate opening
+        g.fillStyle(0x1a1a1a, 1);
+        g.fillRect(52, 44, 24, 24);
+        g.lineStyle(1, 0x444444, 0.5);
+        g.strokeRect(52, 44, 24, 24);
+
+        // Side windows
+        g.fillStyle(0x888888, 1);
+        g.fillRect(28, 32, 14, 10);
+        g.fillRect(86, 32, 14, 10);
+
+        // Flag pole + red flag
+        g.fillStyle(0x888888, 1);
+        g.fillRect(63, 2, 2, 16);
+        g.fillStyle(0xcc2222, 1);
+        g.fillTriangle(65, 3, 65, 13, 78, 8);
+
+        g.generateTexture('building-barracks', W, H);
         g.destroy();
     }
 

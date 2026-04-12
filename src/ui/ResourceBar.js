@@ -3,11 +3,12 @@ import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
 const ICON_KEYS = {
-    food:  'icon-food',
-    wood:  'icon-wood',
-    stone: 'icon-stone',
-    money: 'icon-money',
-    iron:  'icon-iron',
+    food:    'icon-food',
+    wood:    'icon-wood',
+    stone:   'icon-stone',
+    money:   'icon-money',
+    iron:    'icon-iron',
+    weapons: 'icon-weapons',
 };
 
 const TEXT_STYLE = {
@@ -28,7 +29,7 @@ export class ResourceBar {
         this._flashing      = new Set();   // resource names currently mid-flash
         this._starvingFlash = false;
 
-        const slotW  = 160;
+        const slotW  = 128;
         const startX = 30;
         const y      = 20;
 
