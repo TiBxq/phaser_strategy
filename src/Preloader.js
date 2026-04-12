@@ -23,6 +23,9 @@ export class Preloader extends Phaser.Scene {
         this.load.image('building-market',     'assets/buildings/market.png');
         this.load.image('building-warehouse',  'assets/buildings/warehouse.png');
         this.load.image('building-townhall',   'assets/buildings/town_hall.png');
+        this.load.image('building-iron-mine',  'assets/buildings/iron_mine.png');
+        this.load.image('building-smithy',     'assets/buildings/smithy.png');
+        this.load.image('building-barracks',   'assets/buildings/barracks.png');
 
         // UI icon spritesheet (16×16 frames)
         this.load.image('icons-sheet', 'assets/ui/icons/items_sheet.png');
@@ -37,9 +40,6 @@ export class Preloader extends Phaser.Scene {
         this._generateNoRoadIcon();
         this._generateStarvationIcon();
         this._generateIconTextures();
-        this._generateIronMineTexture();
-        this._generateSmithyTexture();
-        this._generateBarracksTexture();
         this.scene.start('Game');
     }
 
@@ -410,145 +410,4 @@ export class Preloader extends Phaser.Scene {
         g.destroy();
     }
 
-    /** Generate a 128×96 Smithy building sprite — dark forge with glowing fire. */
-    _generateSmithyTexture() {
-        const W = 128, H = 96;
-        const g = this.make.graphics({ x: 0, y: 0, add: false });
-
-        // Base platform
-        g.fillStyle(0x3a3030, 1);
-        g.fillRect(16, 60, 96, 30);
-        g.lineStyle(1, 0x222020, 0.9);
-        g.strokeRect(16, 60, 96, 30);
-
-        // Walls
-        g.fillStyle(0x4a3535, 1);
-        g.fillRect(24, 28, 80, 40);
-        g.lineStyle(1, 0x2a2020, 0.9);
-        g.strokeRect(24, 28, 80, 40);
-
-        // Forge fire window (orange glow)
-        g.fillStyle(0xff6600, 1);
-        g.fillRect(30, 36, 20, 20);
-        g.fillStyle(0xffaa00, 1);
-        g.fillRect(33, 39, 14, 14);
-        g.fillStyle(0xffff00, 0.8);
-        g.fillRect(36, 42, 8, 8);
-
-        // Anvil silhouette
-        g.fillStyle(0x222020, 1);
-        g.fillRect(65, 50, 24, 8);
-        g.fillRect(72, 58, 10, 6);
-
-        // Chimney
-        g.fillStyle(0x3a3030, 1);
-        g.fillRect(26, 8, 14, 24);
-        g.fillStyle(0x222020, 1);
-        g.fillRect(27, 6, 12, 6);
-
-        // Roof
-        g.fillStyle(0x2a2020, 1);
-        g.fillTriangle(20, 28, 108, 28, 64, 8);
-        g.lineStyle(1, 0x111010, 0.8);
-        g.strokeTriangle(20, 28, 108, 28, 64, 8);
-
-        g.generateTexture('building-smithy', W, H);
-        g.destroy();
-    }
-
-    /** Generate a 128×96 Barracks building sprite — grey stone with battlements and a red flag. */
-    _generateBarracksTexture() {
-        const W = 128, H = 96;
-        const g = this.make.graphics({ x: 0, y: 0, add: false });
-
-        // Base platform
-        g.fillStyle(0x3a3a3a, 1);
-        g.fillRect(16, 60, 96, 30);
-        g.lineStyle(1, 0x222222, 0.9);
-        g.strokeRect(16, 60, 96, 30);
-
-        // Main building
-        g.fillStyle(0x555555, 1);
-        g.fillRect(20, 24, 88, 44);
-        g.lineStyle(1, 0x333333, 0.9);
-        g.strokeRect(20, 24, 88, 44);
-
-        // Battlements (crenellations)
-        g.fillStyle(0x666666, 1);
-        for (let bx = 22; bx < 106; bx += 12) {
-            g.fillRect(bx, 14, 8, 12);
-        }
-
-        // Gate opening
-        g.fillStyle(0x1a1a1a, 1);
-        g.fillRect(52, 44, 24, 24);
-        g.lineStyle(1, 0x444444, 0.5);
-        g.strokeRect(52, 44, 24, 24);
-
-        // Side windows
-        g.fillStyle(0x888888, 1);
-        g.fillRect(28, 32, 14, 10);
-        g.fillRect(86, 32, 14, 10);
-
-        // Flag pole + red flag
-        g.fillStyle(0x888888, 1);
-        g.fillRect(63, 2, 2, 16);
-        g.fillStyle(0xcc2222, 1);
-        g.fillTriangle(65, 3, 65, 13, 78, 8);
-
-        g.generateTexture('building-barracks', W, H);
-        g.destroy();
-    }
-
-    /**
-     * Generate a 128×96 Iron Mine building sprite programmatically.
-     * Grey-brown structure with orange iron-vein accents.
-     */
-    _generateIronMineTexture() {
-        const W = 128, H = 96;
-        const g = this.make.graphics({ x: 0, y: 0, add: false });
-
-        // Base platform — dark stone
-        g.fillStyle(0x4a4040, 1);
-        g.fillRect(16, 60, 96, 30);
-        g.lineStyle(1, 0x222222, 0.8);
-        g.strokeRect(16, 60, 96, 30);
-
-        // Main shaft building — grey stone walls
-        g.fillStyle(0x5a5050, 1);
-        g.fillRect(28, 28, 72, 40);
-        g.lineStyle(1, 0x333030, 0.9);
-        g.strokeRect(28, 28, 72, 40);
-
-        // Orange iron-vein stripes on the walls
-        g.fillStyle(0xcc5500, 1);
-        g.fillRect(36, 34, 4, 28);
-        g.fillRect(58, 34, 4, 28);
-        g.fillRect(80, 34, 4, 28);
-        g.fillStyle(0xff8844, 1);
-        g.fillRect(37, 36, 2, 8);
-        g.fillRect(59, 36, 2, 8);
-        g.fillRect(81, 36, 2, 8);
-
-        // Entrance arch
-        g.fillStyle(0x2a2020, 1);
-        g.fillRect(52, 44, 24, 24);
-        g.fillStyle(0xcc5500, 0.5);
-        g.fillRect(53, 44, 22, 3);
-
-        // Roof peak
-        g.fillStyle(0x3a3535, 1);
-        g.fillTriangle(24, 28, 104, 28, 64, 8);
-        g.lineStyle(1, 0x222020, 0.9);
-        g.strokeTriangle(24, 28, 104, 28, 64, 8);
-
-        // Chimney
-        g.fillStyle(0x4a4040, 1);
-        g.fillRect(82, 10, 12, 22);
-        g.fillStyle(0x222222, 1);
-        g.fillRect(83, 8, 10, 6);
-
-        g.generateTexture('building-iron-mine', W, H);
-        g.destroy();
-    }
 }
