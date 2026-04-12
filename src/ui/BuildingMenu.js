@@ -55,6 +55,10 @@ export class BuildingMenu {
         const gap      = (canvasW - MENU_ORDER.length * btnW) / (MENU_ORDER.length + 1);
         const y        = canvasH - barH / 2;
 
+        this._btnH    = btnH;
+        this._barY    = y;
+        this._MIN_GAP = MIN_GAP;
+
         MENU_ORDER.forEach((id, i) => {
             const config = id === 'ROAD' ? ROAD_CONFIG : BUILDING_CONFIGS[id];
             const x = gap + i * (btnW + gap);
@@ -63,6 +67,7 @@ export class BuildingMenu {
                 .setOrigin(0, 0.5)
                 .setScrollFactor(0)
                 .setDepth(DEPTH_UI_ELEMENT)
+                .setDisplaySize(btnW, btnH)
                 .setInteractive({ useHandCursor: true });
 
             const lbl = scene.add.text(x + btnW / 2, y - btnH / 4, config.label, LABEL_STYLE)
@@ -161,11 +166,28 @@ export class BuildingMenu {
         });
     }
 
+    _isTownHallPlaced() {
+        for (const b of this._buildSystem.placedBuildings.values()) {
+            if (b.configId === 'TOWN_HALL') return true;
+        }
+        return false;
+    }
+
     _updateLockStates() {
         for (const id of MENU_ORDER) {
-            const unlocked = this._checkRequirements(id);
             const { btn, lbl } = this._buttons[id];
             const { texts, icons, lockedLabel } = this._priceTags[id];
+
+            if (id === 'TOWN_HALL' && this._isTownHallPlaced()) {
+                btn.setVisible(false).disableInteractive();
+                lbl.setVisible(false);
+                for (const t of texts) t.setVisible(false);
+                for (const ic of icons) ic.setVisible(false);
+                lockedLabel.setVisible(false);
+                continue;
+            }
+
+            const unlocked = this._checkRequirements(id);
             const LOCKED_ALPHA = 0.4;
 
             if (unlocked) {
@@ -189,6 +211,37 @@ export class BuildingMenu {
                 lockedLabel.setText(this._lockedLabelText(id)).setVisible(true);
             }
         }
+        this._relayout();
+    }
+
+    _relayout() {
+        const visibleIds = MENU_ORDER.filter(id => !(id === 'TOWN_HALL' && this._isTownHallPlaced()));
+        const n       = visibleIds.length;
+        const canvasW = this.scene.scale.width;
+        const btnH    = this._btnH;
+        const btnW    = Math.floor((canvasW - (n + 1) * this._MIN_GAP) / n);
+        const gap     = (canvasW - n * btnW) / (n + 1);
+        const y       = this._barY;
+
+        visibleIds.forEach((id, i) => {
+            const x = gap + i * (btnW + gap);
+            const { btn, lbl } = this._buttons[id];
+            const { texts, icons, cost, lockedLabel } = this._priceTags[id];
+
+            btn.setX(x).setDisplaySize(btnW, btnH);
+            lbl.setX(x + btnW / 2);
+            lockedLabel.setX(x + btnW / 2);
+
+            const costEntries = Object.entries(cost).filter(([, v]) => v > 0);
+            const totalPriceW = costEntries.length * ENTRY_W + (costEntries.length - 1) * ENTRY_GAP;
+            const scale       = totalPriceW > 0 ? Math.min(1, (btnW - 8) / totalPriceW) : 1;
+            let priceX = x + btnW / 2 - totalPriceW * scale / 2;
+            for (let j = 0; j < costEntries.length; j++) {
+                icons[j].setX(priceX + ICON_SIZE * scale / 2).setScale(scale);
+                texts[j].setX(priceX + ICON_SIZE * scale + ICON_GAP * scale).setScale(scale);
+                priceX += (ENTRY_W + ENTRY_GAP) * scale;
+            }
+        });
     }
 
     // ─── Price colours ─────────────────────────────────────────────────────────
