@@ -52,6 +52,7 @@ The map is an isometric grid of tiles. The player's ship anchors at the southern
 | **Grass** | Open, buildable land | Default building site; Farms cultivate it into fields |
 | **Forest** | Dense trees | Claimed by Lumbermills for ongoing wood harvesting |
 | **Rocks** | Stone outcroppings | The only valid site for Quarries |
+| **Iron** | Orange-tinted rock deposits | The only valid site for Iron Mines; placed deep inland, requires exploration |
 | **Water** | Ocean and rivers | Natural barriers; crossable only by bridge |
 | **Elevated land** | Hills and cliffs | Blocks movement and building; gates off parts of the map |
 
@@ -63,16 +64,18 @@ No two maps feel identical, but all maps are legible and fair. The starting coas
 
 ## Resources
 
-Three material resources and one currency drive the economy. Each material resource has a shared storage cap — initially 200 — that grows only by building Warehouses.
+Four material resources and one currency drive the economy, plus two military resources. Food, wood, stone, and money share a storage cap — initially 200 — that grows only by building Warehouses. Iron and weapons have no cap.
 
 | Resource | Role |
 |----------|------|
 | **Food** | Consumed each cycle by every villager. Also spent when building Houses to attract new settlers. The lifeblood of growth. |
 | **Wood** | Primary construction material. Required for almost every building. |
-| **Stone** | Mid-game material. Needed for advanced buildings and infrastructure. |
-| **Money** | Currency earned through trade. Used for Lumbermills, Quarries, Warehouses, and bounties. Not stored in Warehouses — tracked separately with no cap. |
+| **Stone** | Mid-game material. Needed for advanced buildings, infrastructure, and roads. |
+| **Money** | Currency earned through trade. Used for Lumbermills, Quarries, Iron Mines, Warehouses, roads, and warrior upkeep. Tracked separately with no cap. |
+| **Iron** | Rare resource mined from Iron deposits deep inland. Consumed by the Smithy to forge weapons. No storage cap. |
+| **Weapons** | Forged at the Smithy from iron. Spent to train warriors at the Barracks. No storage cap. |
 
-**Starting reserves:** Food 80 · Wood 60 · Stone 30 · Money 100.
+**Starting reserves:** Food 80 · Wood 60 · Stone 30 · Money 100 · Iron 0 · Weapons 0.
 
 Material resources (food, wood, stone) are capped. A full storage bin stops accepting new production. The player must either spend resources on buildings or build a Warehouse before production goes to waste. This creates natural pacing pressure.
 
@@ -96,7 +99,16 @@ The hunger system ensures that food is the game's primary constraint. A player w
 
 ## Buildings
 
-All buildings occupy a **2×2 tile footprint**. Placement requires the footprint to land on valid terrain with no overlapping structures.
+All buildings occupy a **2×2 tile footprint**. Placement requires the footprint to land on valid terrain with no overlapping structures. All buildings except the Town Hall require road connectivity to function — an unconnected building produces nothing and defers villager spawning.
+
+### Town Hall
+> *Cost: Free*
+
+The anchor of the settlement. Must be placed first — all other buildings require the Town Hall to exist before they can be built. Cannot be demolished. Houses **4 villagers** on placement (the founding crew). The Town Hall is the origin of the road network; all connectivity traces back to an adjacent road tile.
+
+*Placed on: Grass. Can be placed only once.*
+
+---
 
 ### House
 > *Cost: 15 Wood · 20 Food*
@@ -104,6 +116,8 @@ All buildings occupy a **2×2 tile footprint**. Placement requires the footprint
 Houses villagers. Each House built adds two villagers to the settlement — two new workers, and two new mouths to feed. The food cost represents supplies needed to attract and settle newcomers from the ship.
 
 The food cost is critical: it means the player cannot grow population without a food surplus. Building a House is an investment — spend 20 food now to gain 2 workers who will (hopefully) produce more than they consume. A House built during a food shortage accelerates the crisis.
+
+**Upgrade (Tier 2):** Cost 25 Wood · 30 Stone · 50 Money. Increases resident capacity from 2 to 4. Use the Upgrade button in the building's info panel.
 
 *Placed on: Grass.*
 
@@ -138,11 +152,42 @@ The spatial lesson: a Lumbermill placed at the heart of a large forest grove is 
 ### Quarry
 > *Cost: 10 Wood · 15 Money*
 
-Stone is required for Lumbermills and Warehouses. Quarries must be built on rocky terrain — terrain that is often sparse and not always near the starting area. Getting a Quarry online early unlocks the mid-game economy.
+Stone is required for Lumbermills, Warehouses, roads, and other mid-game buildings. Quarries must be built on rocky terrain — terrain that is often sparse and not always near the starting area. Getting a Quarry online early unlocks the mid-game economy.
 
-Supports up to **3 workers**, each producing **2 stone per production cycle**.
+Supports up to **6 workers**, each producing **1 stone per production cycle**. The Quarry mines its 4 footprint tiles (100 stone each, 400 total); when the deposit is exhausted it goes idle.
 
 *Placed on: Rocks.*
+
+---
+
+### Iron Mine
+> *Cost: 15 Wood · 5 Stone · 20 Money*
+
+Iron is rare, found only in deposits placed deep inland — requiring exploration to locate. The Iron Mine must be built directly on an Iron deposit. It mines its 4 footprint tiles (100 iron each, 400 total). Supports up to **6 workers**, each producing **1 iron per production cycle**. When exhausted, the mine goes idle.
+
+Iron feeds the Smithy. Finding and developing the iron deposit is a mid-to-late-game milestone that unlocks the military supply chain.
+
+*Placed on: Iron.*
+
+---
+
+### Smithy
+> *Cost: 20 Wood · 10 Stone · 30 Money*
+
+Forges weapons from iron. Requires **1 worker**. Every **5 production cycles**, if 10 iron is available, the Smithy consumes 10 iron and produces **1 weapon**. If iron is unavailable at cycle 5 the Smithy waits and retries each tick until iron arrives.
+
+Weapons are the sole input for training warriors at the Barracks.
+
+*Placed on: Grass.*
+
+---
+
+### Barracks
+> *Cost: 30 Wood · 20 Stone · 40 Money*
+
+Trains villagers as warriors. Supports up to **5 warriors**. Assigning each warrior costs **1 weapon**. Warriors consume **2 money per production cycle** each as upkeep — maintaining a garrison is an ongoing economic drain that must be justified by the territory or resources it secures.
+
+*Placed on: Grass.*
 
 ---
 
@@ -153,7 +198,7 @@ The Market is the settlement's source of money. It does not produce goods — it
 
 The Market creates a deliberate trade-off: food spent on trade cannot feed workers. A settlement with a large food surplus can afford to trade aggressively; a settlement running tight on food cannot. This makes money a function of economic health — you earn it by being efficient, not by clicking a button.
 
-The Market also serves as a social hub. When road networks and the day cycle are implemented, the Market's location will affect villager commute times and trade efficiency.
+Supports up to **4 merchants**. The Market also serves as a social hub. When the day cycle is implemented, the Market's location will affect villager commute times and trade efficiency.
 
 *Placed on: Grass.*
 
@@ -186,15 +231,18 @@ The fundamental tension: a larger workforce means more production, but also more
 
 ## Production Cycle
 
-Every **5 seconds**, all production buildings fire simultaneously:
+Every **5 seconds**, all connected production buildings fire simultaneously:
 
 - Farms yield **3 food per staffed field**.
-- Lumbermills yield **2 wood per staffed forest section**.
-- Quarries yield **2 stone per staffed worker**.
+- Lumbermills yield **2 wood per staffed worker**; deplete claimed forest tiles.
+- Quarries yield **1 stone per staffed worker**; deplete footprint rock tiles.
+- Iron Mines yield **1 iron per staffed worker**; deplete footprint iron tiles.
+- Smithy increments its 5-cycle counter; at cycle 5 with ≥10 iron available, produces **1 weapon** and resets.
 - Markets convert **3 food per merchant into 5 money**.
 - All villagers consume **1 food**.
+- Warriors consume **2 money** each.
 
-Floating labels appear briefly over the map showing what was produced and consumed. If food drops to zero, a hunger warning fires. If food remains at zero for 3+ cycles, the Hungry state activates (see Hunger and Starvation).
+Disconnected buildings are skipped entirely. Floating labels appear briefly over the map showing what was produced and consumed. If food drops to zero, a hunger warning fires. If food remains at zero for 3+ cycles, the Hungry state activates (see Hunger and Starvation).
 
 ---
 
@@ -208,34 +256,46 @@ Floating labels appear briefly over the map showing what was produced and consum
 | Wood | 60 |
 | Stone | 30 |
 | Money | 100 |
-| Villagers | 0 |
-| Storage cap | 200 |
+| Iron | 0 |
+| Weapons | 0 |
+| Villagers | 4 (from Town Hall) |
+| Storage cap | 200 (food/wood/stone/money) |
 
 ### Building Costs
 
 | Building | Food | Wood | Stone | Money | Terrain |
 |----------|------|------|-------|-------|---------|
+| Town Hall | — | — | — | — | Grass |
 | House | 20 | 15 | — | — | Grass |
+| House T2 (upgrade) | — | 25 | 30 | 50 | — |
 | Farm | — | 20 | — | — | Grass |
 | Lumbermill | — | — | 15 | 10 | Grass, adj. Forest |
-| Market | — | 25 | 10 | — | Grass |
 | Quarry | — | 10 | — | 15 | Rocks |
+| Iron Mine | — | 15 | 5 | 20 | Iron |
+| Smithy | — | 20 | 10 | 30 | Grass |
+| Barracks | — | 30 | 20 | 40 | Grass |
+| Market | — | 25 | 10 | — | Grass |
 | Warehouse | — | 30 | 25 | 40 | Grass |
+| Road (per tile) | — | — | 1 | 2 | Grass |
 
 ### Production per Worker per Cycle
 
-| Building | Output | Rate |
-|----------|--------|------|
-| Farm | Food | 3 |
-| Lumbermill | Wood | 2 |
-| Quarry | Stone | 2 |
-| Market | Money | 5 (consumes 3 food) |
+| Building | Output | Rate | Notes |
+|----------|--------|------|-------|
+| Farm | Food | 3 | Per field block staffed |
+| Lumbermill | Wood | 2 | Depletes forest tiles |
+| Quarry | Stone | 1 | Depletes rock tiles; max 6 workers |
+| Iron Mine | Iron | 1 | Depletes iron tiles; max 6 workers |
+| Smithy | Weapons | 1 per 5 cycles | Consumes 10 iron; 1 worker only |
+| Market | Money | 5 | Consumes 3 food per merchant; max 4 merchants |
 
 ### Consumption
 
 | | Rate |
 |---|---|
 | Food per villager per cycle | 1 |
+| Food per Market merchant per cycle (extra) | 3 |
+| Money per warrior per cycle | 2 |
 | Cycle interval | 5 seconds |
 
 ---
@@ -244,15 +304,16 @@ Floating labels appear briefly over the map showing what was produced and consum
 
 ```
 Arrive by ship with limited supplies
-    → Build a Farm → get food production running
-    → Build a House (costs food + wood) → gain villagers
-    → Assign workers to Farm → build food surplus
-    → Build a Lumbermill → assign workers → gain wood
+    → Place Town Hall (free) → gain 4 starting villagers
+    → Build a Farm → road → assign workers → get food production running
+    → Build a Lumbermill → road → assign workers → gain wood
+    → Build a House (costs food + wood) → road → gain 2 more villagers
     → Grow population (more Houses, each costing food)
-    → Hit stone bottleneck → find rocks → build Quarry
+    → Hit stone bottleneck → find rocks → build Quarry → road
     → Build a Market → convert food surplus to money
     → Hit storage cap → build Warehouse
-    → Explore inland → discover new terrain, resources, threats
+    → Explore inland → find Iron deposit → build Iron Mine → road
+    → Build Smithy → produce weapons → build Barracks → train warriors
     → Expand further...
 ```
 
@@ -302,22 +363,35 @@ The game does not end. But a settlement that has weathered its early fragility, 
 
 ---
 
-## Planned Systems
+## Roads and Connectivity
 
-The following systems represent the intended direction of the game. They are not yet implemented but are treated as authoritative design intent — existing systems should be built with these in mind.
+Roads are the circulatory system of the settlement. **All buildings except the Town Hall must be connected to the road network to function.** An unconnected building produces nothing and defers villager spawning.
+
+- **Cost:** 1 stone + 2 money per tile
+- **Placement:** 1×1 tiles on flat, unoccupied GRASS (not ramps)
+- **Removal:** Select a road tile in idle mode → Remove Road button; refunds 1 money. Buildings that lose their road path immediately go inactive.
+- **Connectivity:** A building is connected if any tile in its footprint or claimed field blocks is 4-directionally adjacent to a road tile reachable from the Town Hall. Re-evaluated after every road placement or removal.
+
+**Disconnection consequences:** Houses that lose road connectivity lose residents over time — after a 3-tick grace period, one resident departs every 3 ticks. Residents return 1-per-3-ticks when the road is restored.
 
 ---
 
-### Roads and Infrastructure
+## Quests
 
-All buildings must be connected to the road network to function. An isolated Farm with no road access cannot be staffed; a Warehouse with no road cannot receive deliveries. Roads are manually placed by the player, tile by tile, and cost resources to build.
+A linear quest system guides new players through the core loop. One quest is active at a time; all tasks completed auto-advances to the next. The quest panel is displayed top-left.
 
-The road network is not just a checkbox — it is an active design constraint. Villagers travel faster on roads than on open terrain, so the layout of the network directly affects how productive a settlement is.
+| Quest | Tasks |
+|-------|-------|
+| **First Steps** | Place Town Hall · Place Farm · Place Lumbermill · Connect a building by road · Assign a worker |
+| **Establishing an Economy** | Build House · Build Quarry · Build Iron Mine · Build Market |
+| **Protect Your Village** | Build Smithy · Build Barracks · Train 5 warriors |
+| **Enjoy the Game!** | Terminal state — congratulations display |
 
-**Key decisions the road system creates:**
-- Efficient routing vs. cheapest routing.
-- Hub-and-spoke layouts vs. grid networks. Centralizing road connections reduces cost but creates bottlenecks.
-- Prioritization: which buildings get connected first when resources are scarce.
+---
+
+## Planned Systems
+
+The following systems represent the intended direction of the game. They are not yet implemented but are treated as authoritative design intent — existing systems should be built with these in mind.
 
 ---
 
