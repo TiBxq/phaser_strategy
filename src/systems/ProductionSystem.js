@@ -61,6 +61,11 @@ export class ProductionSystem {
                 if (building.rocksTiles.length === 0) continue;
             }
 
+            // Iron Mine: stop entirely when all footprint iron is depleted
+            if (building.configId === 'IRON_MINE') {
+                if (building.ironTiles.length === 0) continue;
+            }
+
             // Food producers are exempt from hunger efficiency penalties
             const mult   = (this.hungerSystem && !isFoodProducer(building))
                 ? this.hungerSystem.getEfficiencyMultiplier()
@@ -72,7 +77,7 @@ export class ProductionSystem {
                           resource: config.producesResource, amount: yield_ });
 
             // Deplete resource tiles for extraction buildings
-            if (building.configId === 'LUMBERMILL' || building.configId === 'QUARRY') {
+            if (building.configId === 'LUMBERMILL' || building.configId === 'QUARRY' || building.configId === 'IRON_MINE') {
                 this._depleteTiles(building, yield_);
             }
         }
@@ -160,7 +165,9 @@ export class ProductionSystem {
      * convert to GRASS and emit TILE_DEPLETED for visual refresh.
      */
     _depleteTiles(building, amount) {
-        const key   = building.configId === 'LUMBERMILL' ? 'forestTiles' : 'rocksTiles';
+        const key   = building.configId === 'LUMBERMILL' ? 'forestTiles'
+                    : building.configId === 'QUARRY'      ? 'rocksTiles'
+                    : 'ironTiles';
         const tiles = building[key];
         if (!tiles || tiles.length === 0 || amount <= 0) return;
 

@@ -19,7 +19,7 @@ export const FOREST_TILES_PER_WORKER = 4;
  *   maxVillagers        — max villagers (static cap; tile-based buildings use dynamic cap)
  *   villagerCapacity    — how many villagers this building HOUSES (House only)
  *   onPlace             — string token dispatched by BuildSystem after placement:
- *                         null | 'spawnVillager' | 'spawnFields' | 'claimForest' | 'increaseStorageCap' | 'initRocksTiles'
+ *                         null | 'spawnVillager' | 'spawnFields' | 'claimForest' | 'increaseStorageCap' | 'initRocksTiles' | 'initIronTiles'
  *   description         — short text shown in TileInfoPanel
  */
 export const BUILDING_CONFIGS = Object.freeze({
@@ -131,6 +131,24 @@ export const BUILDING_CONFIGS = Object.freeze({
         onPlace: 'initRocksTiles',
         requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
         description: '2×2 building on rocks. Mines the 4 tiles it occupies (400 stone total). Up to 6 workers → 1 stone/tick each.',
+    },
+
+    IRON_MINE: {
+        id: 'IRON_MINE',
+        label: 'Iron Mine',
+        textureKey: 'building-iron-mine',
+        cost: { food: 0, wood: 15, stone: 5, money: 20 },
+        buildableOn: ['IRON'],
+        requiresAdjacentTo: null,
+        footprint: 2,
+        claimsTileType: null,
+        producesResource: 'iron',
+        productionPerVillager: 1,
+        maxVillagers: 6,
+        villagerCapacity: 0,
+        onPlace: 'initIronTiles',
+        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+        description: '2×2 building on iron. Mines the 4 tiles it occupies (400 iron total). Up to 6 workers → 1 iron/tick each.',
     },
 
     MARKET: {

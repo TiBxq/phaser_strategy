@@ -20,6 +20,13 @@ export const TILE_TYPES = Object.freeze({
         buildable: false,
         initialResources: 100,
     },
+    IRON: {
+        id: 'IRON',
+        weight: 0,
+        textureKey: 'tile-iron',
+        buildable: false,
+        initialResources: 100,
+    },
 });
 
 // Pre-built weighted pool for fast random picks

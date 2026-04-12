@@ -7,6 +7,7 @@ const ICON_KEYS = {
     wood:  'icon-wood',
     stone: 'icon-stone',
     money: 'icon-money',
+    iron:  'icon-iron',
 };
 
 const TEXT_STYLE = {
@@ -27,7 +28,7 @@ export class ResourceBar {
         this._flashing      = new Set();   // resource names currently mid-flash
         this._starvingFlash = false;
 
-        const slotW  = 200;
+        const slotW  = 160;
         const startX = 30;
         const y      = 20;
 
@@ -50,7 +51,7 @@ export class ResourceBar {
         });
 
         // Villager count (far right)
-        this._villagerLabel = scene.add.text(880, y, 'Villagers: 0 (0 free)', TEXT_STYLE)
+        this._villagerLabel = scene.add.text(955, y, 'Villagers: 0 (0 free)', TEXT_STYLE)
             .setOrigin(1, 0.5)
             .setScrollFactor(0)
             .setDepth(1001);

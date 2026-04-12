@@ -92,6 +92,7 @@ export class BuildSystem {
             fieldTiles: [],    // block anchors {col, row} for Farm 2×2 field blocks
             forestTiles: [],   // individual FOREST tile positions for Lumbermill
             rocksTiles: [],    // footprint ROCKS tile positions for Quarry
+            ironTiles:  [],    // footprint IRON tile positions for Iron Mine
             residents:    0,   // current residents (spawnVillager buildings only)
             maxResidents: 0,   // max capacity (spawnVillager buildings only)
             totalCost: { ...config.cost },  // cumulative cost (base + upgrades) for demolish refund
@@ -121,6 +122,12 @@ export class BuildSystem {
             case 'initRocksTiles':
                 for (const [dc, dr] of FOOTPRINT) {
                     building.rocksTiles.push({ col: col + dc, row: row + dr });
+                }
+                break;
+
+            case 'initIronTiles':
+                for (const [dc, dr] of FOOTPRINT) {
+                    building.ironTiles.push({ col: col + dc, row: row + dr });
                 }
                 break;
 

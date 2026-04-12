@@ -177,7 +177,7 @@ export class TileInfoPanel {
         GameEvents.on(EventNames.PRODUCTION_TICK, () => {
             if (!this._currentTile) return;
             const b = this.buildSystem.getBuildingAt(this._currentTile.col, this._currentTile.row);
-            if (b?.configId === 'LUMBERMILL' || b?.configId === 'QUARRY') {
+            if (b?.configId === 'LUMBERMILL' || b?.configId === 'QUARRY' || b?.configId === 'IRON_MINE') {
                 this._show(this._currentTile.col, this._currentTile.row, this._currentTile.tile);
             }
         });
@@ -246,6 +246,11 @@ export class TileInfoPanel {
                 const total = building.rocksTiles.reduce(
                     (s, ft) => s + (this.tileMap.getTile(ft.col, ft.row)?.resources ?? 0), 0);
                 body += `\nStone left: ${total}`;
+            }
+            if (building.configId === 'IRON_MINE') {
+                const total = building.ironTiles.reduce(
+                    (s, ft) => s + (this.tileMap.getTile(ft.col, ft.row)?.resources ?? 0), 0);
+                body += `\nIron left: ${total}`;
             }
             // Resident count for spawnVillager buildings (House, Town Hall)
             if (config.onPlace === 'spawnVillager' && building.maxResidents > 0) {

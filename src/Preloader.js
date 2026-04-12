@@ -37,6 +37,7 @@ export class Preloader extends Phaser.Scene {
         this._generateNoRoadIcon();
         this._generateStarvationIcon();
         this._generateIconTextures();
+        this._generateIronMineTexture();
         this.scene.start('Game');
     }
 
@@ -108,6 +109,38 @@ export class Preloader extends Phaser.Scene {
 
                 dest.refresh();
             }
+        }
+
+        // Iron tile — uses the rocks spritesheet frame with an orange tint overlay.
+        const ironSrc = this.textures.getFrame('tileset', FRAME_ROCKS);
+        for (let h = 0; h <= MAX_TILE_HEIGHT; h++) {
+            const canvasH = TILE_W + h * HEIGHT_STEP;
+            const dest    = this.textures.createCanvas(`tile-iron-h${h}`, TILE_W, canvasH);
+            const ctx     = dest.getContext();
+            ctx.imageSmoothingEnabled = false;
+
+            ctx.drawImage(
+                ironSrc.source.image,
+                ironSrc.cutX, ironSrc.cutY, SRC_FRAME_SIZE, SRC_FRAME_SIZE,
+                0, 0, TILE_W, TILE_W,
+            );
+            for (let k = 0; k < h; k++) {
+                ctx.drawImage(
+                    ironSrc.source.image,
+                    ironSrc.cutX, ironSrc.cutY + SRC_WALL_OFFSET, SRC_FRAME_SIZE, SRC_WALL_HEIGHT,
+                    0, TILE_W + k * HEIGHT_STEP, TILE_W, HEIGHT_STEP,
+                );
+            }
+
+            // Apply orange tint over existing (non-transparent) pixels only
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.globalAlpha = 0.50;
+            ctx.fillStyle = '#cc5500';
+            ctx.fillRect(0, 0, TILE_W, canvasH);
+            ctx.globalAlpha = 1.0;
+            ctx.globalCompositeOperation = 'source-over';
+
+            dest.refresh();
         }
 
         // Field tile — always flat (height 0), no variants needed.
@@ -269,6 +302,17 @@ export class Preloader extends Phaser.Scene {
             ctx.drawImage(src, col * 16, row * 16, 16, 16, 0, 0, 16, 16);
             dest.refresh();
         }
+
+        // Iron icon — generated programmatically (no sheet frame available)
+        const ironIcon = this.textures.createCanvas('icon-iron', 16, 16);
+        const iCtx     = ironIcon.getContext();
+        iCtx.fillStyle = '#994400';
+        iCtx.fillRect(2, 5, 12, 7);    // dark base bar
+        iCtx.fillStyle = '#cc5500';
+        iCtx.fillRect(2, 5, 12, 5);    // mid bar
+        iCtx.fillStyle = '#ff8844';
+        iCtx.fillRect(3, 6, 10, 2);    // highlight streak
+        ironIcon.refresh();
     }
 
     _generateUITextures() {
@@ -332,6 +376,58 @@ export class Preloader extends Phaser.Scene {
         g.strokeCircle(5, 3, 3);
         g.strokeRect(2, 6, 6, 5);
         g.generateTexture(key, 10, 14);
+        g.destroy();
+    }
+
+    /**
+     * Generate a 128×96 Iron Mine building sprite programmatically.
+     * Grey-brown structure with orange iron-vein accents.
+     */
+    _generateIronMineTexture() {
+        const W = 128, H = 96;
+        const g = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Base platform — dark stone
+        g.fillStyle(0x4a4040, 1);
+        g.fillRect(16, 60, 96, 30);
+        g.lineStyle(1, 0x222222, 0.8);
+        g.strokeRect(16, 60, 96, 30);
+
+        // Main shaft building — grey stone walls
+        g.fillStyle(0x5a5050, 1);
+        g.fillRect(28, 28, 72, 40);
+        g.lineStyle(1, 0x333030, 0.9);
+        g.strokeRect(28, 28, 72, 40);
+
+        // Orange iron-vein stripes on the walls
+        g.fillStyle(0xcc5500, 1);
+        g.fillRect(36, 34, 4, 28);
+        g.fillRect(58, 34, 4, 28);
+        g.fillRect(80, 34, 4, 28);
+        g.fillStyle(0xff8844, 1);
+        g.fillRect(37, 36, 2, 8);
+        g.fillRect(59, 36, 2, 8);
+        g.fillRect(81, 36, 2, 8);
+
+        // Entrance arch
+        g.fillStyle(0x2a2020, 1);
+        g.fillRect(52, 44, 24, 24);
+        g.fillStyle(0xcc5500, 0.5);
+        g.fillRect(53, 44, 22, 3);
+
+        // Roof peak
+        g.fillStyle(0x3a3535, 1);
+        g.fillTriangle(24, 28, 104, 28, 64, 8);
+        g.lineStyle(1, 0x222020, 0.9);
+        g.strokeTriangle(24, 28, 104, 28, 64, 8);
+
+        // Chimney
+        g.fillStyle(0x4a4040, 1);
+        g.fillRect(82, 10, 12, 22);
+        g.fillStyle(0x222222, 1);
+        g.fillRect(83, 8, 10, 6);
+
+        g.generateTexture('building-iron-mine', W, H);
         g.destroy();
     }
 }

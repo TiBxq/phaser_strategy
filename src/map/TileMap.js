@@ -48,6 +48,9 @@ export class TileMap {
         // Second outcrop: inland, requires exploration (col+row ≈ 27)
         this._placeOutcrop(13 + this._rng(0, 2), 12 + this._rng(0, 2));
 
+        // Iron deposit: deep map, requires exploration (col+row ≈ 30)
+        this._placeIronDeposit(14 + this._rng(0, 3), 14 + this._rng(0, 3));
+
         // Phase 5: scatter pass — small random forest patches + stray rock tiles
         this._scatter();
 
@@ -230,6 +233,45 @@ export class TileMap {
                 tile.height    = minH;
                 tile.isRamp    = false;
             }
+        }
+    }
+
+    /**
+     * Place a guaranteed 2×2 IRON deposit at (topCol, topRow) at uniform height,
+     * then scatter ~3 individual IRON tiles in adjacent cells for visual variety.
+     */
+    _placeIronDeposit(topCol, topRow) {
+        const c0 = Math.min(topCol, MAP_SIZE - 2);
+        const r0 = Math.min(topRow, MAP_SIZE - 2);
+
+        let minH = MAX_TILE_HEIGHT;
+        for (let r = r0; r <= r0 + 1; r++)
+            for (let c = c0; c <= c0 + 1; c++) {
+                const t = this.getTile(c, r);
+                if (t) minH = Math.min(minH, t.height);
+            }
+
+        for (let r = r0; r <= r0 + 1; r++)
+            for (let c = c0; c <= c0 + 1; c++) {
+                const t = this.getTile(c, r);
+                if (!t) continue;
+                t.type      = 'IRON';
+                t.resources = TILE_TYPES.IRON.initialResources;
+                t.height    = minH;
+                t.isRamp    = false;
+            }
+
+        // Scatter ~3 individual IRON tiles in cells adjacent to the 2×2 block
+        const offsets = [[-1, 0], [2, 0], [0, -1], [0, 2], [-1, 1], [2, 1], [1, -1], [-1, 2]];
+        offsets.sort(() => Math.random() - 0.5);
+        let placed = 0;
+        for (const [dc, dr] of offsets) {
+            if (placed >= 3) break;
+            const t = this.getTile(c0 + dc, r0 + dr);
+            if (!t || t.type !== 'GRASS') continue;
+            t.type      = 'IRON';
+            t.resources = TILE_TYPES.IRON.initialResources;
+            placed++;
         }
     }
 
