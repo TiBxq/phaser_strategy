@@ -94,6 +94,12 @@ export class BuildSystem {
             rocksTiles: [],    // footprint ROCKS tile positions for Quarry
             residents:    0,   // current residents (spawnVillager buildings only)
             maxResidents: 0,   // max capacity (spawnVillager buildings only)
+            totalCost: { ...config.cost },  // cumulative cost (base + upgrades) for demolish refund
+            _initialSpawnDone:      false,  // true once villagers have been spawned for this building
+            _disconnectCycles:      0,      // production ticks spent disconnected (spawnVillager only)
+            _disconnectDepartTimer: 0,      // ticks toward next disconnection departure
+            _disconnectDeparted:    0,      // residents currently away due to disconnection
+            _reconnectReturnTimer:  0,      // ticks toward next return after reconnect
         };
 
         // Mark all 4 footprint tiles as occupied
@@ -138,7 +144,8 @@ export class BuildSystem {
         if (config.onPlace === 'spawnVillager') {
             building.maxResidents = config.villagerCapacity;
             if (building.isConnected) {
-                building.residents = config.villagerCapacity;
+                building.residents         = config.villagerCapacity;
+                building._initialSpawnDone = true;
                 villagerManager.addVillagers(config.villagerCapacity);
             }
         }
@@ -179,6 +186,11 @@ export class BuildSystem {
         const extra = newConfig.villagerCapacity - oldConfig.villagerCapacity;
         building.configId = newConfig.id;
 
+        // Accumulate upgrade cost into totalCost so demolish refunds the full investment
+        for (const [r, v] of Object.entries(oldConfig.upgradeCost)) {
+            building.totalCost[r] = (building.totalCost[r] ?? 0) + v;
+        }
+
         if (extra > 0) {
             villagerManager.addVillagers(extra);
             building.maxResidents = newConfig.villagerCapacity;
@@ -193,6 +205,8 @@ export class BuildSystem {
     remove(uid, tileMap) {
         const building = this.placedBuildings.get(uid);
         if (!building) return;
+
+        const fieldTilesSnapshot = [...building.fieldTiles];
 
         // Release all 4 footprint tiles
         for (const [dc, dr] of FOOTPRINT) {
@@ -215,7 +229,56 @@ export class BuildSystem {
         }
 
         this.placedBuildings.delete(uid);
-        GameEvents.emit(EventNames.BUILDING_REMOVED, { uid, col: building.col, row: building.row });
+        GameEvents.emit(EventNames.BUILDING_REMOVED, {
+            uid, col: building.col, row: building.row, fieldTiles: fieldTilesSnapshot,
+        });
+    }
+
+    // ─── Demolish ──────────────────────────────────────────────────────────────
+
+    canDemolish(uid) {
+        const building = this.placedBuildings.get(uid);
+        if (!building) return { valid: false, reason: 'Building not found.' };
+        if (building.configId === 'TOWN_HALL') return { valid: false, reason: 'Cannot demolish the Town Hall.' };
+        return { valid: true, reason: '' };
+    }
+
+    /**
+     * Demolishes a building: unassigns workers, removes resident villagers,
+     * undoes side-effects (cap increase), refunds 50% of total invested cost,
+     * then calls remove() to free tiles and fire BUILDING_REMOVED.
+     */
+    demolish(uid, tileMap, villagerManager) {
+        const building = this.placedBuildings.get(uid);
+        if (!building) return;
+
+        const config = BUILDING_CONFIGS[building.configId];
+
+        // Return all assigned workers to the unassigned pool (total unchanged)
+        if (building.assignedVillagers > 0) {
+            villagerManager.unassign(uid, building.assignedVillagers, this);
+        }
+
+        // Remove resident villagers from the global pool (reduces total)
+        if (config.onPlace === 'spawnVillager') {
+            for (let i = 0; i < building.residents; i++) {
+                villagerManager.removeVillager(this);
+            }
+        }
+
+        // Undo warehouse storage cap increase
+        if (config.onPlace === 'increaseStorageCap') {
+            this.resourceSystem.setCap(this.resourceSystem.getCap() - CAP_PER_WAREHOUSE);
+        }
+
+        // Refund 50% of total invested cost (base placement + any upgrades), rounded down
+        for (const [resource, amount] of Object.entries(building.totalCost ?? {})) {
+            const refund = Math.floor(amount / 2);
+            if (refund > 0) this.resourceSystem.add(resource, refund);
+        }
+
+        // Free tiles and emit BUILDING_REMOVED
+        this.remove(uid, tileMap);
     }
 
     getBuilding(uid) {

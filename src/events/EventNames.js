@@ -18,8 +18,8 @@ export const EventNames = Object.freeze({
     // payload: { state: 'fed' | 'hungry' | 'starving' }
     HUNGER_STATE_CHANGED: 'hunger:state_changed',
 
-    // A villager departed a residential building due to starvation
-    // payload: { buildingUid: string }
+    // A villager departed a residential building
+    // payload: { buildingUid: string, reason: 'starvation' | 'disconnected' }
     VILLAGER_DEPARTED: 'villager:departed',
 
     // A villager returned to a residential building after recovery
@@ -64,6 +64,10 @@ export const EventNames = Object.freeze({
     // payload: { buildingUid }
     BUILDING_UPGRADE_REQUEST: 'building:upgrade_request',
 
+    // UI requested to demolish a building
+    // payload: { buildingUid }
+    BUILDING_DEMOLISH_REQUEST: 'building:demolish_request',
+
     // A building was upgraded to the next tier
     // payload: { building }
     BUILDING_UPGRADED: 'building:upgraded',
@@ -77,8 +81,14 @@ export const EventNames = Object.freeze({
     // Player clicked a tile while in road mode — payload: { col, row }
     ROAD_PLACEMENT_REQUEST: 'road:placement_request',
 
+    // UI requested to demolish a road tile — payload: { col, row }
+    ROAD_DEMOLISH_REQUEST: 'road:demolish_request',
+
     // A road tile was successfully placed — payload: { col, row }
     ROAD_PLACED: 'road:placed',
+
+    // A road tile was successfully removed — payload: { col, row }
+    ROAD_REMOVED: 'road:removed',
 
     // One or more buildings changed road-connectivity state
     // payload: { changed: Array<{ building, wasConnected }> }

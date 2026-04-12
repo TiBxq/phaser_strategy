@@ -91,13 +91,16 @@ export class Game extends Phaser.Scene {
         });
 
         // When buildings gain road connectivity, trigger any deferred onPlace effects.
+        // Guard with _initialSpawnDone so reconnecting after road demolition
+        // never double-spawns villagers that are already in the pool.
         GameEvents.on(EventNames.BUILDING_CONNECTIVITY_CHANGED, ({ changed }) => {
             for (const { building, wasConnected } of changed) {
-                if (!wasConnected && building.isConnected) {
+                if (!wasConnected && building.isConnected && !building._initialSpawnDone) {
                     const config = BUILDING_CONFIGS[building.configId];
                     if (config?.onPlace === 'spawnVillager') {
-                        this.villagerManager.addVillagers(config.villagerCapacity);
-                        building.residents = config.villagerCapacity;
+                        building.residents         = building.maxResidents;
+                        building._initialSpawnDone = true;
+                        this.villagerManager.addVillagers(building.maxResidents);
                     }
                 }
             }
@@ -105,6 +108,15 @@ export class Game extends Phaser.Scene {
 
         GameEvents.on(EventNames.TILE_DEPLETED, ({ col, row, isBuildingFootprint }) => {
             if (!isBuildingFootprint) this.mapRenderer.refreshTile(col, row);
+        });
+
+        // Refresh freed field tiles so they revert to their natural appearance
+        GameEvents.on(EventNames.BUILDING_REMOVED, ({ fieldTiles }) => {
+            for (const ft of fieldTiles ?? []) {
+                for (const [dc, dr] of [[0,0],[1,0],[0,1],[1,1]]) {
+                    this.mapRenderer.refreshTile(ft.col + dc, ft.row + dr);
+                }
+            }
         });
 
         GameEvents.on(EventNames.BUILD_PLACEMENT_REQUEST, ({ configId, col, row }) => {

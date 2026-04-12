@@ -5,6 +5,11 @@ import { EventNames } from '../events/EventNames.js';
 
 const TICK_DELAY_MS = 5000;
 
+// Disconnection mechanic constants
+const DISCONNECT_GRACE_CYCLES  = 3;   // free ticks before departures start
+const DISCONNECT_DEPART_CYCLES = 3;   // ticks between each departure while disconnected
+const RECONNECT_RETURN_CYCLES  = 3;   // ticks between each return after reconnect
+
 /** Returns true if the building produces food. Exempt from hunger efficiency penalties. */
 function isFoodProducer(building) {
     return BUILDING_CONFIGS[building.configId]?.producesResource === 'food';
@@ -97,6 +102,56 @@ export class ProductionSystem {
         }
 
         GameEvents.emit(EventNames.PRODUCTION_TICK, { produced, consumed, yields });
+
+        // ── Disconnection departures / reconnect returns ────────────────────────
+        // Tracks per-building disconnected-cycles and causes residents to depart when
+        // a spawnVillager building has been disconnected too long.  Returns them
+        // (one-per-tick, up to the count that left for this reason) on reconnect.
+        // Starvation returns are handled separately by HungerSystem.
+        for (const building of this.buildSystem.placedBuildings.values()) {
+            const config = BUILDING_CONFIGS[building.configId];
+            if (config?.onPlace !== 'spawnVillager' || building.maxResidents <= 0) continue;
+
+            if (!building.isConnected) {
+                building._reconnectReturnTimer = 0;
+
+                if (building.residents > 0) {
+                    building._disconnectCycles++;
+
+                    if (building._disconnectCycles > DISCONNECT_GRACE_CYCLES) {
+                        building._disconnectDepartTimer++;
+                        if (building._disconnectDepartTimer >= DISCONNECT_DEPART_CYCLES) {
+                            building.residents--;
+                            building._disconnectDeparted++;
+                            this.villagerManager.removeVillager(this.buildSystem);
+                            GameEvents.emit(EventNames.VILLAGER_DEPARTED, {
+                                buildingUid: building.uid, reason: 'disconnected',
+                            });
+                            building._disconnectDepartTimer = 0;
+                        }
+                    }
+                }
+            } else {
+                // Connected — reset disconnection counters
+                building._disconnectCycles      = 0;
+                building._disconnectDepartTimer = 0;
+
+                // Return only disconnection-departed residents (starvation returns
+                // are handled by HungerSystem separately)
+                if (building._disconnectDeparted > 0) {
+                    building._reconnectReturnTimer++;
+                    if (building._reconnectReturnTimer >= RECONNECT_RETURN_CYCLES) {
+                        building._disconnectDeparted--;
+                        building.residents++;
+                        this.villagerManager.addVillagers(1);
+                        GameEvents.emit(EventNames.VILLAGER_RETURNED, { buildingUid: building.uid });
+                        building._reconnectReturnTimer = 0;
+                    }
+                } else {
+                    building._reconnectReturnTimer = 0;
+                }
+            }
+        }
     }
 
     /**

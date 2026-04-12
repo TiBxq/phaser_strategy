@@ -51,6 +51,30 @@ export class RoadSystem {
     }
 
     /**
+     * Returns { valid: boolean, reason: string }.
+     */
+    canDemolish(col, row, tileMap) {
+        const tile = tileMap.getTile(col, row);
+        if (!tile)        return { valid: false, reason: 'Out of bounds.' };
+        if (!tile.isRoad) return { valid: false, reason: 'No road here.' };
+        return { valid: true, reason: '' };
+    }
+
+    /**
+     * Removes a road tile, refunds half cost (money:1), and re-evaluates
+     * building connectivity. Assumes canDemolish() already passed.
+     */
+    demolish(col, row, tileMap, buildSystem, resourceSystem) {
+        const tile = tileMap.getTile(col, row);
+        tile.isRoad = false;
+        this.roadTiles.delete(`${col},${row}`);
+        // Refund half of placement cost: floor(stone:1/2)=0, floor(money:2/2)=1
+        resourceSystem.add('money', 1);
+        GameEvents.emit(EventNames.ROAD_REMOVED, { col, row });
+        if (buildSystem) this.updateConnectivity(tileMap, buildSystem);
+    }
+
+    /**
      * Re-evaluates road connectivity for every placed building.
      * Emits BUILDING_CONNECTIVITY_CHANGED if any building's isConnected state changed.
      */

@@ -44,6 +44,27 @@ export class UI extends Phaser.Scene {
             gameScene.buildSystem.upgrade(buildingUid, gameScene.villagerManager);
         });
 
+        GameEvents.on(EventNames.BUILDING_DEMOLISH_REQUEST, ({ buildingUid }) => {
+            const result = gameScene.buildSystem.canDemolish(buildingUid);
+            if (!result.valid) {
+                GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: result.reason });
+                return;
+            }
+            gameScene.buildSystem.demolish(buildingUid, gameScene.tileMap, gameScene.villagerManager);
+            GameEvents.emit(EventNames.TILE_DESELECTED);
+        });
+
+        GameEvents.on(EventNames.ROAD_DEMOLISH_REQUEST, ({ col, row }) => {
+            const result = gameScene.roadSystem.canDemolish(col, row, gameScene.tileMap);
+            if (!result.valid) {
+                GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: result.reason });
+                return;
+            }
+            gameScene.roadSystem.demolish(col, row, gameScene.tileMap, gameScene.buildSystem, gameScene.resourceSystem);
+            gameScene.mapRenderer.refreshTile(col, row);
+            GameEvents.emit(EventNames.TILE_DESELECTED);
+        });
+
         // Trigger initial resource display
         const resources = gameScene.resourceSystem.getAll();
         GameEvents.emit(EventNames.RESOURCES_CHANGED, {

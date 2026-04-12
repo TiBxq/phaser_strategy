@@ -93,9 +93,13 @@ export class HungerSystem {
     _hasReturnableVillagers() {
         for (const building of this._buildSystem.placedBuildings.values()) {
             const config = BUILDING_CONFIGS[building.configId];
+            // Only return to connected buildings — disconnected ones are handled
+            // by ProductionSystem's reconnect-return loop
             if (config?.onPlace === 'spawnVillager' &&
+                building.isConnected &&
                 building.maxResidents > 0 &&
-                building.residents < building.maxResidents) {
+                building.residents < building.maxResidents &&
+                building._disconnectDeparted === 0) {
                 return true;
             }
         }
@@ -108,7 +112,9 @@ export class HungerSystem {
             if (config?.onPlace === 'spawnVillager' && building.residents > 0) {
                 building.residents--;
                 this._villagerManager.removeVillager(this._buildSystem);
-                GameEvents.emit(EventNames.VILLAGER_DEPARTED, { buildingUid: building.uid });
+                GameEvents.emit(EventNames.VILLAGER_DEPARTED, {
+                    buildingUid: building.uid, reason: 'starvation',
+                });
                 return;
             }
         }
@@ -117,9 +123,13 @@ export class HungerSystem {
     _returnVillager() {
         for (const building of this._buildSystem.placedBuildings.values()) {
             const config = BUILDING_CONFIGS[building.configId];
+            // Only return to connected buildings where there are no pending
+            // disconnection-return slots (those are handled by ProductionSystem)
             if (config?.onPlace === 'spawnVillager' &&
+                building.isConnected &&
                 building.maxResidents > 0 &&
-                building.residents < building.maxResidents) {
+                building.residents < building.maxResidents &&
+                building._disconnectDeparted === 0) {
                 building.residents++;
                 this._villagerManager.addVillagers(1);
                 GameEvents.emit(EventNames.VILLAGER_RETURNED, { buildingUid: building.uid });

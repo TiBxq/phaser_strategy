@@ -49,8 +49,8 @@ export class BuildingRenderer {
             this._refreshNoRoadIcons();
         });
 
-        GameEvents.on(EventNames.BUILDING_REMOVED, ({ uid }) => {
-            this._removeBuilding(uid);
+        GameEvents.on(EventNames.BUILDING_REMOVED, ({ uid, fieldTiles }) => {
+            this._removeBuilding(uid, fieldTiles ?? []);
         });
 
         GameEvents.on(EventNames.VILLAGERS_CHANGED, () => {
@@ -77,9 +77,13 @@ export class BuildingRenderer {
             if (this._selectionOverlay?.visible) this._showSelectionOverlay(building);
         });
 
-        GameEvents.on(EventNames.VILLAGER_DEPARTED, ({ buildingUid }) => {
-            const b = this._buildSystem?.getBuilding(buildingUid);
-            if (b) this._addStarvationIcon(b);
+        GameEvents.on(EventNames.VILLAGER_DEPARTED, ({ buildingUid, reason }) => {
+            // Disconnection departures are already signalled by the no-road icon;
+            // only show the orange starvation icon for hunger-caused departures.
+            if (reason !== 'disconnected') {
+                const b = this._buildSystem?.getBuilding(buildingUid);
+                if (b) this._addStarvationIcon(b);
+            }
         });
 
         GameEvents.on(EventNames.VILLAGER_RETURNED, ({ buildingUid }) => {
@@ -127,12 +131,26 @@ export class BuildingRenderer {
         this._fieldSprites.set(key, img);
     }
 
-    _removeBuilding(uid) {
+    _removeBuilding(uid, fieldTiles = []) {
         const img = this._buildingSprites.get(uid);
-        if (img) {
-            img.destroy();
-            this._buildingSprites.delete(uid);
+        if (img) { img.destroy(); this._buildingSprites.delete(uid); }
+
+        // Destroy farm field sprites for all tiles in each released 2×2 field block
+        for (const block of fieldTiles) {
+            for (const [dc, dr] of FOOTPRINT) {
+                const key = `${block.col + dc}_${block.row + dr}`;
+                const sprite = this._fieldSprites.get(key);
+                if (sprite) { sprite.destroy(); this._fieldSprites.delete(key); }
+            }
         }
+
+        // Destroy no-road connection icon
+        const noRoad = this._noRoadSprites.get(uid);
+        if (noRoad) { noRoad.destroy(); this._noRoadSprites.delete(uid); }
+
+        // Destroy starvation departure icon
+        const starving = this._starvationSprites.get(uid);
+        if (starving) { starving.destroy(); this._starvationSprites.delete(uid); }
     }
 
     // ─── Worker tiles ──────────────────────────────────────────────────────────

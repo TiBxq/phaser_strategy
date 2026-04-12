@@ -42,12 +42,12 @@ export class TileInfoPanel {
         this.tileMap        = tileMap;
         this._resourceSystem = resourceSystem;
 
-        // Background (200×200 — VillagerPanel sits below at PY+200)
+        // Background (200×230 — VillagerPanel sits below at PY+235)
         this._bg = scene.add.image(PX, PY, 'ui-sidepanel')
             .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(1000)
-            .setDisplaySize(200, 200)
+            .setDisplaySize(200, 230)
             .setVisible(false);
 
         this._titleText = scene.add.text(PX + 8, PY + 10, '', HEADER_STYLE)
@@ -79,7 +79,7 @@ export class TileInfoPanel {
 
         // Upgrade button (hidden by default)
         // btn-normal is 148×30; centered in 200px panel → left edge at PX+26
-        this._upgradeBtn = scene.add.image(PX + 26, PY + 165, 'btn-normal')
+        this._upgradeBtn = scene.add.image(PX + 26, PY + 155, 'btn-normal')
             .setOrigin(0, 0.5)
             .setScrollFactor(0)
             .setDepth(1001)
@@ -87,7 +87,22 @@ export class TileInfoPanel {
             .setInteractive({ useHandCursor: true });
 
         // "Upgrade" label in top half of button
-        this._upgradeBtnLabel = scene.add.text(PX + 100, PY + 158, 'Upgrade', BTN_LABEL_STYLE)
+        this._upgradeBtnLabel = scene.add.text(PX + 100, PY + 148, 'Upgrade', BTN_LABEL_STYLE)
+            .setOrigin(0.5, 0.5)
+            .setScrollFactor(0)
+            .setDepth(1002)
+            .setVisible(false);
+
+        // Demolish button (hidden by default, red tint)
+        this._demolishBtn = scene.add.image(PX + 26, PY + 197, 'btn-normal')
+            .setOrigin(0, 0.5)
+            .setScrollFactor(0)
+            .setDepth(1001)
+            .setTint(0xdd3333)
+            .setVisible(false)
+            .setInteractive({ useHandCursor: true });
+
+        this._demolishBtnLabel = scene.add.text(PX + 100, PY + 197, 'Demolish', BTN_LABEL_STYLE)
             .setOrigin(0.5, 0.5)
             .setScrollFactor(0)
             .setDepth(1002)
@@ -110,7 +125,29 @@ export class TileInfoPanel {
             }
         });
 
-        this._currentUpgradeBuildingUid = null;
+        this._demolishBtn.on('pointerover', () => {
+            if (this._demolishBtn.visible) {
+                this._demolishBtn.setTexture('btn-hover').setTint(0xff4444);
+            }
+        });
+        this._demolishBtn.on('pointerout', () => {
+            if (this._demolishBtn.visible) {
+                this._demolishBtn.setTexture('btn-normal').setTint(0xdd3333);
+            }
+        });
+        this._demolishBtn.on('pointerdown', () => {
+            if (this._currentDemolishBuildingUid) {
+                GameEvents.emit(EventNames.BUILDING_DEMOLISH_REQUEST, {
+                    buildingUid: this._currentDemolishBuildingUid,
+                });
+            } else if (this._currentDemolishRoadTile) {
+                GameEvents.emit(EventNames.ROAD_DEMOLISH_REQUEST, this._currentDemolishRoadTile);
+            }
+        });
+
+        this._currentUpgradeBuildingUid  = null;
+        this._currentDemolishBuildingUid = null;
+        this._currentDemolishRoadTile    = null;
 
         GameEvents.on(EventNames.TILE_SELECTED, ({ col, row, tile }) => {
             this._show(col, row, tile);
@@ -225,9 +262,16 @@ export class TileInfoPanel {
 
             const lostCount = building.maxResidents - building.residents;
             if (config.onPlace === 'spawnVillager' && lostCount > 0) {
+                const disconnectLost = building._disconnectDeparted ?? 0;
+                const starvLost      = lostCount - disconnectLost;
+                let lostMsg = '';
+                if (disconnectLost > 0)
+                    lostMsg += `${disconnectLost} left (no road)\n`;
+                if (starvLost > 0)
+                    lostMsg += `${starvLost} left (starvation)`;
                 const noRoadH = this._noRoadText.visible ? this._noRoadText.height + 4 : 0;
                 this._starvationText
-                    .setText(`${lostCount} villager${lostCount > 1 ? 's' : ''} left due to starvation`)
+                    .setText(lostMsg.trim())
                     .setY(PY + 32 + this._bodyText.height + 4 + noRoadH)
                     .setVisible(true);
             } else {
@@ -241,6 +285,29 @@ export class TileInfoPanel {
                 this._currentUpgradeBuildingUid = null;
                 this._clearUpgradeBtn();
             }
+
+            // Demolish button — all buildings except Town Hall
+            this._currentDemolishRoadTile = null;
+            if (building.configId !== 'TOWN_HALL') {
+                this._currentDemolishBuildingUid = building.uid;
+                this._demolishBtnLabel.setText('Demolish').setVisible(true);
+                this._demolishBtn.setVisible(true);
+            } else {
+                this._currentDemolishBuildingUid = null;
+                this._demolishBtn.setVisible(false);
+                this._demolishBtnLabel.setVisible(false);
+            }
+        } else if (tile.isRoad) {
+            this._noRoadText.setVisible(false);
+            this._starvationText.setVisible(false);
+            this._titleText.setText('Road');
+            this._bodyText.setText('Road tile.\nConnects buildings\nto the Town Hall.\n\nReturns 1 money\nif removed.');
+            this._currentUpgradeBuildingUid  = null;
+            this._currentDemolishBuildingUid = null;
+            this._currentDemolishRoadTile    = { col, row };
+            this._clearUpgradeBtn();
+            this._demolishBtnLabel.setText('Remove Road').setVisible(true);
+            this._demolishBtn.setVisible(true);
         } else {
             this._noRoadText.setVisible(false);
             this._starvationText.setVisible(false);
@@ -251,8 +318,12 @@ export class TileInfoPanel {
             this._bodyText.setText(
                 `Type: ${typeLabel}\nNo building.\n\nSelect a building\nfrom the menu below\nto build here.`,
             );
-            this._currentUpgradeBuildingUid = null;
+            this._currentUpgradeBuildingUid  = null;
+            this._currentDemolishBuildingUid = null;
+            this._currentDemolishRoadTile    = null;
             this._clearUpgradeBtn();
+            this._demolishBtn.setVisible(false);
+            this._demolishBtnLabel.setVisible(false);
         }
     }
 
@@ -267,13 +338,13 @@ export class TileInfoPanel {
         for (const obj of this._upgradeCostObjects) obj.destroy();
         this._upgradeCostObjects = [];
 
-        // Build icon + number row in the bottom half of the button (PY+172)
+        // Build icon + number row in the bottom half of the button (PY+163)
         const costEntries = Object.entries(upgradeCost).filter(([, v]) => v > 0);
         const entryW      = ICON_SIZE + ICON_GAP + NUM_W;
         const totalW      = costEntries.length * entryW + (costEntries.length - 1) * ENTRY_GAP;
         // Center icons within the 148px button (left edge PX+26)
         let iconX = PX + 26 + (148 - totalW) / 2;
-        const iconY = PY + 173;
+        const iconY = PY + 163;
         const numColor = canAfford ? '#ffdd88' : '#ff4444';
 
         for (const [resource, amount] of costEntries) {
@@ -303,12 +374,16 @@ export class TileInfoPanel {
 
     _hide() {
         this._currentTile = null;
-        this._currentUpgradeBuildingUid = null;
+        this._currentUpgradeBuildingUid  = null;
+        this._currentDemolishBuildingUid = null;
+        this._currentDemolishRoadTile    = null;
         this._bg.setVisible(false);
         this._titleText.setVisible(false);
         this._bodyText.setVisible(false);
         this._noRoadText.setVisible(false);
         this._starvationText.setVisible(false);
         this._clearUpgradeBtn();
+        this._demolishBtn.setVisible(false);
+        this._demolishBtnLabel.setText('Demolish').setVisible(false);
     }
 }

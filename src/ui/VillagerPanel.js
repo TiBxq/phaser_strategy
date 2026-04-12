@@ -14,9 +14,9 @@ const BTN_STYLE = {
     color:      '#ffffff',
 };
 
-// Sits below TileInfoPanel — estimate TileInfoPanel takes ~200px
+// Sits below TileInfoPanel (230px tall, from PY=50 to 280) + 5px gap
 const PX = 762;
-const PY = 260;
+const PY = 290;
 
 export class VillagerPanel {
     constructor(scene, buildSystem, villagerManager) {
