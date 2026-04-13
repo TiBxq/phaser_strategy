@@ -14,6 +14,7 @@ export class BuildSystem {
         this._nextUid = 0;
         // Set from Game.js after both systems are created
         this.roadSystem = null;
+        this.fogSystem  = null;
     }
 
     // ─── Validation ────────────────────────────────────────────────────────────
@@ -25,6 +26,15 @@ export class BuildSystem {
     canPlace(configId, col, row, tileMap) {
         const config = BUILDING_CONFIGS[configId];
         if (!config) return { valid: false, reason: 'Unknown building type.' };
+
+        // Fog of war: all 4 footprint tiles must be fully visible
+        if (this.fogSystem) {
+            for (const [dc, dr] of FOOTPRINT) {
+                if (!this.fogSystem.isVisible(col + dc, row + dr)) {
+                    return { valid: false, reason: 'Cannot build in the fog of war.' };
+                }
+            }
+        }
 
         // Town Hall may only be placed once
         if (configId === 'TOWN_HALL') {

@@ -12,6 +12,7 @@ import { RoadSystem } from '../systems/RoadSystem.js';
 import { HungerSystem } from '../systems/HungerSystem.js';
 import { WarriorRenderer } from '../warriors/WarriorRenderer.js';
 import { QuestSystem } from '../systems/QuestSystem.js';
+import { FogOfWarSystem, VIS_MIN, VIS_MAX } from '../systems/FogOfWarSystem.js';
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
@@ -28,6 +29,9 @@ export class Game extends Phaser.Scene {
         this.buildSystem     = new BuildSystem(this.resourceSystem);
         this.roadSystem      = new RoadSystem();
         this.buildSystem.roadSystem = this.roadSystem;
+        this.fogOfWarSystem          = new FogOfWarSystem();
+        this.buildSystem.fogSystem   = this.fogOfWarSystem;
+        this.roadSystem.fogSystem    = this.fogOfWarSystem;
         this.villagerManager = new VillagerManager();
 
         // ── Map ────────────────────────────────────────────────────────────────
@@ -47,8 +51,9 @@ export class Game extends Phaser.Scene {
         this.questSystem = new QuestSystem(this.buildSystem, this.villagerManager);
 
         this.mapRenderer      = new MapRenderer(this, this.tileMap);
+        this.mapRenderer.setFogSystem(this.fogOfWarSystem);
         this.buildingRenderer = new BuildingRenderer(this, this.tileMap, this.buildSystem);
-        this.villagerRenderer = new VillagerRenderer(this, this.tileMap);
+        this.villagerRenderer = new VillagerRenderer(this, this.tileMap, this.fogOfWarSystem);
         this.warriorRenderer  = new WarriorRenderer(this, this.tileMap);
         this.floatingLabels   = new FloatingLabels(this);
 
@@ -139,6 +144,11 @@ export class Game extends Phaser.Scene {
             }
         });
 
+        // Reveal fog around every building placed
+        GameEvents.on(EventNames.BUILDING_PLACED, ({ building }) => {
+            this.fogOfWarSystem.revealAroundFootprint(building.col, building.row);
+        });
+
         // ── Launch UI in parallel ──────────────────────────────────────────────
         this.scene.launch('UI');
     }
@@ -177,9 +187,9 @@ export class Game extends Phaser.Scene {
             mapSpanY + padding * 2,
         );
 
-        // Start camera centred on map
-        const centerTileCol = MAP_SIZE / 2;
-        const centerTileRow = MAP_SIZE / 2;
+        // Start camera centred on the initial visible area (bottom-right 12×12, col/row VIS_MIN..VIS_MAX)
+        const centerTileCol = Math.round((VIS_MIN + VIS_MAX) / 2);
+        const centerTileRow = Math.round((VIS_MIN + VIS_MAX) / 2);
         const cx = (centerTileCol - centerTileRow) * (TILE_W / 2) + ORIGIN_X;
         const cy = (centerTileCol + centerTileRow) * (TILE_H / 2) + ORIGIN_Y + TILE_H;
         this.cameras.main.centerOn(cx, cy);

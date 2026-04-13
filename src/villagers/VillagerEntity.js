@@ -9,9 +9,10 @@ const IDLE_MAX_MS   = 1200;
 const MAX_RETRIES   = 3;
 
 export class VillagerEntity {
-    constructor(scene, tileMap, col, row) {
-        this._scene   = scene;
-        this._tileMap = tileMap;
+    constructor(scene, tileMap, col, row, fogSystem = null) {
+        this._scene     = scene;
+        this._tileMap   = tileMap;
+        this._fogSystem = fogSystem;
         this.col       = col;
         this.row       = row;
         this._path     = [];   // full path for the current wander goal
@@ -48,7 +49,7 @@ export class VillagerEntity {
             return;
         }
 
-        const dest = randomWalkableTile(this._tileMap, { col: this.col, row: this.row });
+        const dest = randomWalkableTile(this._tileMap, { col: this.col, row: this.row }, this._fogSystem);
         if (!dest) {
             this._scheduleWander();
             return;

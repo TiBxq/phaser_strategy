@@ -47,11 +47,12 @@ export function randomWalkableTileNear(tileMap, centerCol, centerRow, radius) {
     return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-export function randomWalkableTile(tileMap, exclude = null) {
+export function randomWalkableTile(tileMap, exclude = null, fogSystem = null) {
     const candidates = [];
     for (let row = 0; row < MAP_SIZE; row++) {
         for (let col = 0; col < MAP_SIZE; col++) {
             if (exclude && col === exclude.col && row === exclude.row) continue;
+            if (fogSystem && !fogSystem.isVisible(col, row)) continue;
             const t = tileMap.getTile(col, row);
             if (isWalkable(t)) candidates.push(t);
         }

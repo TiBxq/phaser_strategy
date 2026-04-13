@@ -105,4 +105,8 @@ export const EventNames = Object.freeze({
 
     // All tasks in the active quest are done — payload: { quest }
     QUEST_COMPLETED: 'quest:completed',
+
+    // Fog of war state changed for one or more tiles
+    // payload: { changes: Array<{ col, row, state: 'hidden'|'border'|'visible' }> }
+    FOG_UPDATED: 'fog:updated',
 });

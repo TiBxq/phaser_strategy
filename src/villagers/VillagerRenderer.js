@@ -4,10 +4,11 @@ import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
 export class VillagerRenderer {
-    constructor(scene, tileMap) {
-        this._scene    = scene;
-        this._tileMap  = tileMap;
-        this._entities = [];
+    constructor(scene, tileMap, fogSystem = null) {
+        this._scene     = scene;
+        this._tileMap   = tileMap;
+        this._fogSystem = fogSystem;
+        this._entities  = [];
 
         GameEvents.on(EventNames.VILLAGERS_CHANGED, ({ total }) => {
             this._syncCount(total);
@@ -23,8 +24,8 @@ export class VillagerRenderer {
     }
 
     _spawnVillager() {
-        const tile = randomWalkableTile(this._tileMap);
+        const tile = randomWalkableTile(this._tileMap, null, this._fogSystem);
         if (!tile) return;
-        this._entities.push(new VillagerEntity(this._scene, this._tileMap, tile.col, tile.row));
+        this._entities.push(new VillagerEntity(this._scene, this._tileMap, tile.col, tile.row, this._fogSystem));
     }
 }

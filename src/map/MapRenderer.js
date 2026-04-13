@@ -3,6 +3,7 @@ import { MAP_SIZE } from './TileMap.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 import { DEPTH_TILE_HOVER, LAYER_TILE_SELECT, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
+import { FOG_HIDDEN, FOG_BORDER, FOG_VISIBLE } from '../systems/FogOfWarSystem.js';
 
 export const TILE_W = 64;
 export const TILE_H = 32;
@@ -67,6 +68,8 @@ export class MapRenderer {
 
         this._highlightSprite  = null;
         this._selectedSprites  = [];   // array — selection can span multiple tiles
+
+        this._fogSystem = null;
 
         this._render();
         this._createOverlays();
@@ -175,6 +178,72 @@ export class MapRenderer {
         GameEvents.on(EventNames.TILE_DESELECTED, () => {
             this.clearSelection();
         });
+
+        GameEvents.on(EventNames.FOG_UPDATED, ({ changes }) => {
+            for (const { col, row } of changes) {
+                this.refreshFogTile(col, row);
+            }
+        });
+    }
+
+    // ─── Fog of War ────────────────────────────────────────────────────────────
+
+    /**
+     * Connects the fog system and performs the initial full-map fog paint.
+     * Must be called after MapRenderer is constructed and before the first frame.
+     */
+    setFogSystem(fogSystem) {
+        this._fogSystem = fogSystem;
+        this.updateAllFog();
+    }
+
+    /** Refreshes fog overlays for every tile — called once on init. */
+    updateAllFog() {
+        if (!this._fogSystem) return;
+        for (let row = 0; row < MAP_SIZE; row++) {
+            for (let col = 0; col < MAP_SIZE; col++) {
+                this.refreshFogTile(col, row);
+            }
+        }
+    }
+
+    /**
+     * Updates a single tile's visibility and tint based on its fog state.
+     * - hidden : tile sprite hidden (dark background shows through)
+     * - border : grass texture + grey tint (shape hint, terrain type concealed)
+     * - visible: real texture restored, tint cleared, interactivity re-enabled
+     */
+    refreshFogTile(col, row) {
+        if (!this._fogSystem) return;
+
+        const state  = this._fogSystem.getState(col, row);
+        const tile   = this.tileMap.getTile(col, row);
+        const sprite = this.tileSprites[row]?.[col];
+        if (!tile || !sprite) return;
+
+        if (state === FOG_VISIBLE) {
+            sprite.setVisible(true);
+            sprite.setInteractive(
+                new Phaser.Geom.Polygon([
+                    TILE_W / 2, TILE_DEPTH,
+                    TILE_W,     TILE_H / 2 + TILE_DEPTH,
+                    TILE_W / 2, TILE_H + TILE_DEPTH,
+                    0,          TILE_H / 2 + TILE_DEPTH,
+                ]),
+                Phaser.Geom.Polygon.Contains
+            );
+            this.refreshTile(col, row);
+
+        } else if (state === FOG_BORDER) {
+            sprite.setVisible(true);
+            sprite.setTexture(`tile-grass-h${tile.height}`);
+            sprite.setTint(0x888888);
+            sprite.disableInteractive();
+
+        } else { // FOG_HIDDEN
+            sprite.setVisible(false);
+            sprite.disableInteractive();
+        }
     }
 
     highlightTile(col, row) {
@@ -226,8 +295,11 @@ export class MapRenderer {
         this._roadGhostSprite.setVisible(false);
     }
 
-    /** Refresh the texture of a single tile (e.g. after it becomes a field). */
+    /** Refresh the texture of a single tile (e.g. after it becomes a field or road). */
     refreshTile(col, row) {
+        // Fog-covered tiles must not have their real texture restored — fog controls appearance
+        if (this._fogSystem && this._fogSystem.getState(col, row) !== FOG_VISIBLE) return;
+
         const tile   = this.tileMap.getTile(col, row);
         const sprite = this.tileSprites[row][col];
         sprite.setTexture(tileTextureKey(tile));

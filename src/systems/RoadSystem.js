@@ -8,6 +8,7 @@ export class RoadSystem {
     constructor() {
         // Set of 'col,row' strings for O(1) membership tests
         this.roadTiles = new Set();
+        this.fogSystem = null;
     }
 
     // ─── Placement ─────────────────────────────────────────────────────────────
@@ -17,6 +18,9 @@ export class RoadSystem {
      * Roads can only be placed on unoccupied, flat GRASS tiles.
      */
     canPlace(col, row, tileMap, resourceSystem) {
+        if (this.fogSystem && !this.fogSystem.isVisible(col, row)) {
+            return { valid: false, reason: 'Cannot build roads in the fog of war.' };
+        }
         const tile = tileMap.getTile(col, row);
         if (!tile)
             return { valid: false, reason: 'Out of bounds.' };
