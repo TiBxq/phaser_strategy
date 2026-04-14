@@ -1,4 +1,4 @@
-import { MAP_SIZE } from '../map/TileMap.js';
+import { MAP_SIZE, VIS_MIN, VIS_MAX } from '../map/TileMap.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
@@ -6,9 +6,8 @@ export const FOG_HIDDEN  = 0;
 export const FOG_BORDER  = 1;
 export const FOG_VISIBLE = 2;
 
-// Starting visible area: bottom-right 12×12 corner (col ∈ [8..19], row ∈ [8..19])
-export const VIS_MIN = 8;
-export const VIS_MAX = MAP_SIZE - 1;  // 19
+// VIS_MIN / VIS_MAX are defined in TileMap.js and re-exported here for other consumers
+export { VIS_MIN, VIS_MAX };
 
 // Border zone: Chebyshev radius around the visible area boundary
 const BORDER_RADIUS = 2;
