@@ -51,4 +51,36 @@ export class WarriorRenderer {
         for (const entity of pool) entity.destroy();
         this._pools.delete(uid);
     }
+
+    // ── March API ──────────────────────────────────────────────────────────────
+
+    /**
+     * Command all warriors to march toward (targetCol, targetRow).
+     * Calls onFirstArrived() the first time any warrior arrives.
+     * If there are no warriors, calls onFirstArrived() immediately.
+     */
+    marchAllTo(targetCol, targetRow, onFirstArrived) {
+        let fired = false;
+        const cb = () => {
+            if (!fired) { fired = true; onFirstArrived(); }
+        };
+
+        let count = 0;
+        for (const pool of this._pools.values()) {
+            for (const entity of pool) {
+                entity.marchTo(targetCol, targetRow, cb);
+                count++;
+            }
+        }
+        if (count === 0) onFirstArrived();
+    }
+
+    /** Command all warriors to march back to their home barracks. */
+    marchAllHome() {
+        for (const pool of this._pools.values()) {
+            for (const entity of pool) {
+                entity.marchHome();
+            }
+        }
+    }
 }

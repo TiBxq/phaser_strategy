@@ -1,25 +1,29 @@
 import { TILE_TYPES } from '../data/TileTypes.js';
 
-export const MAP_SIZE        = 20;
+export const MAP_SIZE        = 24;
 export const MAX_TILE_HEIGHT = 3;   // maximum elevation level (0 = flat, 3 = peak)
 
 // Starting visible region — mirrors FogOfWarSystem; exported so fog system can import them
-export const VIS_MIN = 8;
-export const VIS_MAX = MAP_SIZE - 1;  // 19
+// VIS_MIN=12 on a 24×24 map gives the same 12×12 visible start as VIS_MIN=8 on a 20×20 map.
+// The bandit camp claims [0..11]×[0..11] (radius 8 from corner (3,3)) which is exactly the
+// 12×12 top-left corner — max reach 11 < VIS_MIN=12, so it never touches the visible start.
+// Non-bandit playable area: 576 - 144 = 432 tiles ≈ same as the old 20×20 total (400 tiles).
+export const VIS_MIN = 12;
+export const VIS_MAX = MAP_SIZE - 1;  // 23
 
 // Heightmap generation tuning
 const HILL_RADIUS    = 4;   // Manhattan radius of each dome hill
 const HILL_COUNT_MIN = 3;   // minimum number of hills per map
-const HILL_COUNT_MAX = 5;   // maximum number of hills per map
+const HILL_COUNT_MAX = 6;   // maximum number of hills per map
 
 // Forest grove sizes (per BALANCE.md)
 const GROVE_COASTAL_SIZE = 8;   // two coastal groves, 8 tiles each
 const GROVE_INLAND_SIZE  = 12;  // one large inland grove, 12 tiles
 
 // Scatter pass — extra tiles for visual variety (not part of balance-critical layout)
-const SCATTER_GROVE_COUNT     = 3;  // number of small random forest patches
-const SCATTER_GROVE_SIZE      = 4;  // tiles per scattered patch
-const SCATTER_ROCKS_COUNT     = 8;  // extra individual rock tiles scattered across map
+const SCATTER_GROVE_COUNT     = 7;  // number of small random forest patches
+const SCATTER_GROVE_SIZE      = 5;  // tiles per scattered patch
+const SCATTER_ROCKS_COUNT     = 10; // extra individual rock tiles scattered across map
 
 export class TileMap {
     constructor() {
@@ -54,15 +58,22 @@ export class TileMap {
         this._generateHeightmap();
 
         // Phase 3: forest groves
-        // Two coastal groves — accessible from the starting area (low col+row)
-        this._placeGrove(2 + this._rng(0, 2), 2 + this._rng(0, 2), GROVE_COASTAL_SIZE);
-        this._placeGrove(8 + this._rng(0, 2), 1 + this._rng(0, 2), GROVE_COASTAL_SIZE);
-        // One large inland grove — requires expansion to reach
-        this._placeGrove(11 + this._rng(0, 2), 10 + this._rng(0, 2), GROVE_INLAND_SIZE);
+        // Grove 1: inside the visible starting area — gives the player forest from turn 1.
+        this._placeGrove(VIS_MIN + 1 + this._rng(0, 3), VIS_MIN + 1 + this._rng(0, 3), GROVE_INLAND_SIZE);
+        // Grove 2: right fog edge (col ≥ VIS_MIN, row < VIS_MIN) — outside bandit zone, requires exploration.
+        this._placeGrove(VIS_MIN + this._rng(0, 3), VIS_MIN - 4 + this._rng(0, 2), GROVE_COASTAL_SIZE);
+        // Grove 3: left fog edge (col < VIS_MIN, row ≥ VIS_MIN) — mirror side, also outside bandit zone.
+        this._placeGrove(VIS_MIN - 4 + this._rng(0, 2), VIS_MIN + this._rng(0, 3), GROVE_COASTAL_SIZE);
+        // Groves 4–6: inside bandit territory — the bandits hide in a dense forest.
+        this._placeGrove(2 + this._rng(0, 2), 2 + this._rng(0, 2), GROVE_INLAND_SIZE);
+        this._placeGrove(5 + this._rng(0, 2), 2 + this._rng(0, 2), GROVE_COASTAL_SIZE);
+        this._placeGrove(2 + this._rng(0, 2), 5 + this._rng(0, 2), GROVE_COASTAL_SIZE);
 
         // Phase 4: rock outcrops and iron deposit
         // All are placed on flat (height-0) ground, never overlap each other, and
         // always have at least one adjacent GRASS tile at height 0 for road access.
+        // Resource features are placed OUTSIDE the bandit zone ([0..VIS_MIN-1]×[0..VIS_MIN-1])
+        // so they are always accessible before the camp is cleared.
         const forbidden = new Set();
 
         // First outcrop: must land in the starting visible area (col/row ∈ [VIS_MIN..VIS_MAX])
@@ -75,9 +86,10 @@ export class TileMap {
             this._featureAnchors.push(loc1);
         }
 
-        // Second outcrop: in the fog — col < VIS_MIN guarantees it starts hidden.
-        // Row range is wide so the generator has plenty of flat candidates.
-        let loc2 = this._findFlatArea(3, VIS_MIN - 1, 3, MAP_SIZE - 3, forbidden);
+        // Second outcrop: left fog edge (col < VIS_MIN, row ≥ VIS_MIN) — in the fog but
+        // outside the bandit zone, reachable by expanding up/left from the starting area.
+        let loc2 = this._findFlatArea(2, VIS_MIN - 2, VIS_MIN, MAP_SIZE - 3, forbidden);
+        if (!loc2) loc2 = this._findFlatArea(1, VIS_MIN - 1, VIS_MIN, MAP_SIZE - 2, forbidden);
         if (!loc2) loc2 = this._findFlatArea(1, MAP_SIZE - 3, 1, MAP_SIZE - 3, forbidden);
         if (loc2) {
             this._placeOutcrop(loc2.col, loc2.row);
@@ -85,14 +97,27 @@ export class TileMap {
             this._featureAnchors.push(loc2);
         }
 
-        // Iron deposit: deep in the fog — both col and row < VIS_MIN puts it in the
-        // unexplored top corner of the diamond, requiring real exploration to reach.
-        let loc3 = this._findFlatArea(1, VIS_MIN - 2, 1, VIS_MIN - 2, forbidden);
-        if (!loc3) loc3 = this._findFlatArea(1, VIS_MIN - 1, 1, VIS_MIN - 1, forbidden);
+        // Iron deposit: right fog edge, close to the visible boundary (row ∈ [VIS_MIN-4..VIS_MIN-2])
+        // so the corridor from the visible start is short and less likely to be cliff-blocked.
+        let loc3 = this._findFlatArea(VIS_MIN, MAP_SIZE - 3, VIS_MIN - 4, VIS_MIN - 2, forbidden);
+        if (!loc3) loc3 = this._findFlatArea(VIS_MIN, MAP_SIZE - 3, 2, VIS_MIN - 1, forbidden);
+        if (!loc3) loc3 = this._findFlatArea(VIS_MIN, MAP_SIZE - 2, 1, VIS_MIN - 1, forbidden);
         if (!loc3) loc3 = this._findFlatArea(1, MAP_SIZE - 3, 1, MAP_SIZE - 3, forbidden);
         if (loc3) {
             this._placeIronDeposit(loc3.col, loc3.row);
+            this._markForbidden(forbidden, loc3.col, loc3.row);
             this._featureAnchors.push(loc3);
+        }
+
+        // Bandit camp: top-left corner of the map — claims the entire [0..VIS_MIN-1]×[0..VIS_MIN-1]
+        // zone (radius 8 from (3,3) reaches exactly col/row=11 < VIS_MIN=12). This gives the
+        // bandit territory its own distinct 12×12 area without touching the player's domain.
+        let campLoc = this._findFlatArea(1, 4, 1, 4, forbidden);
+        if (!campLoc) campLoc = this._findFlatArea(1, VIS_MIN - 2, 1, VIS_MIN - 2, forbidden);
+        if (!campLoc) campLoc = this._findFlatArea(1, VIS_MIN - 1, 1, VIS_MIN - 1, forbidden);
+        if (campLoc) {
+            this._placeBanditCamp(campLoc.col, campLoc.row);
+            this._markForbidden(forbidden, campLoc.col, campLoc.row);
         }
 
         // Phase 5: scatter pass — small random forest patches + stray rock tiles
@@ -142,11 +167,13 @@ export class TileMap {
             type: typeId,
             buildingId: null,
             isField: false,
-            ownedBy: null,   // uid of building that claimed this tile for production
-            height: 0,       // elevation 0–3
-            isRamp: false,   // true when GRASS tile transitions height down to a neighbor
-            isRoad: false,   // true when a road has been placed on this tile
+            ownedBy: null,         // uid of building that claimed this tile for production
+            height: 0,             // elevation 0–3
+            isRamp: false,         // true when GRASS tile transitions height down to a neighbor
+            isRoad: false,         // true when a road has been placed on this tile
             resources: TILE_TYPES[typeId].initialResources,  // remaining harvestable units
+            banditClaimed: false,  // true when inside the bandit camp's territory radius
+            banditCampTile: false, // true for the 4 footprint tiles of the bandit camp itself
         };
     }
 
@@ -318,6 +345,59 @@ export class TileMap {
     }
 
     /**
+     * Place the non-player Bandit Camp at (col, row).
+     * Levels the 2×2 footprint to min height, marks those tiles as banditCampTile,
+     * and claims all tiles within Chebyshev radius 5 as banditClaimed.
+     */
+    _placeBanditCamp(topCol, topRow) {
+        const c0 = Math.min(topCol, MAP_SIZE - 2);
+        const r0 = Math.min(topRow, MAP_SIZE - 2);
+
+        // Level footprint to minimum height (same pattern as iron/rocks features)
+        let minH = MAX_TILE_HEIGHT;
+        for (let r = r0; r <= r0 + 1; r++)
+            for (let c = c0; c <= c0 + 1; c++) {
+                const t = this.getTile(c, r);
+                if (t) minH = Math.min(minH, t.height);
+            }
+
+        for (let r = r0; r <= r0 + 1; r++)
+            for (let c = c0; c <= c0 + 1; c++) {
+                const t = this.getTile(c, r);
+                if (!t) continue;
+                t.height       = minH;
+                t.isRamp       = false;
+                t.banditCampTile = true;
+                t.banditClaimed  = true;
+            }
+
+        // Claim all tiles within Chebyshev radius 8 of the camp anchor (c0, r0).
+        // With camp at (3,3) on a 24×24 map (VIS_MIN=12), this claims the entire
+        // [0..11]×[0..11] corner — max reach = 11 < VIS_MIN, so it never touches the
+        // visible starting area.
+        const CLAIM_RADIUS = 8;
+        const claimedTiles = [];
+
+        for (let r = Math.max(0, r0 - CLAIM_RADIUS); r <= Math.min(MAP_SIZE - 1, r0 + CLAIM_RADIUS); r++) {
+            for (let c = Math.max(0, c0 - CLAIM_RADIUS); c <= Math.min(MAP_SIZE - 1, c0 + CLAIM_RADIUS); c++) {
+                const dist = Math.max(Math.abs(c - c0), Math.abs(r - r0));
+                if (dist <= CLAIM_RADIUS) {
+                    const t = this.getTile(c, r);
+                    if (t) {
+                        t.banditClaimed = true;
+                        claimedTiles.push({ col: c, row: r });
+                    }
+                }
+            }
+        }
+
+        // Store camp position and claimed tile list for BanditCampSystem
+        this.banditCampCol        = c0;
+        this.banditCampRow        = r0;
+        this.banditClaimedTiles   = claimedTiles;
+    }
+
+    /**
      * Search for a 2×2 top-left corner in [colMin..colMax] × [rowMin..rowMax] where:
      *   - All 4 tiles have height 0
      *   - No tile is already in forbiddenSet
@@ -388,40 +468,110 @@ export class TileMap {
      * Run after Phase 6 so ramp flags are final.
      */
     _allFeaturesConnected() {
-        const reachable = this._roadReachableFromStart();
-        return this._featureAnchors.every(anchor => this._featureIsReachable(anchor, reachable));
+        const roadReachable = this._roadReachableFromStart();
+        if (!this._featureAnchors.every(a => this._featureIsReachable(a, roadReachable))) return false;
+
+        // Bandit camp must also be walkable-reachable for the warrior march.
+        // Warriors use A* over all GRASS tiles (including bandit-claimed and ramps),
+        // so this BFS is more permissive than the road BFS.
+        if (this.banditCampCol != null) {
+            const walkReachable = this._walkableReachableFromStart();
+            if (!this._featureIsReachable(
+                { col: this.banditCampCol, row: this.banditCampRow }, walkReachable,
+            )) return false;
+        }
+        return true;
     }
 
     /**
-     * BFS flood-fill through road-placeable tiles (GRASS && !isRamp), seeded
-     * from every such tile in the starting visible area [VIS_MIN..VIS_MAX].
-     * Returns a Set of "col,row" keys.
+     * BFS flood-fill through walkable GRASS tiles, seeded from the starting
+     * visible area [VIS_MIN..VIS_MAX]. Returns a Set of "col,row" keys for
+     * tiles where a road CAN be placed (GRASS && !isRamp).
+     *
+     * Ramp tiles are used as stepping-stones during traversal (they are GRASS
+     * and walkable) but are not added to `reachable` since roads can't be built
+     * on them. Height continuity is enforced: crossing to a neighbour is only
+     * allowed when Math.abs(height diff) <= 1 AND (diff==0 OR a ramp is present
+     * on one of the two tiles) — mirroring `heightMoveCost` from walkable.js.
      */
     _roadReachableFromStart() {
         const reachable = new Set();
-        const queue = [];
+        const visited  = new Set();
+        const queue    = [];
+
         for (let r = VIS_MIN; r <= VIS_MAX; r++) {
             for (let c = VIS_MIN; c <= VIS_MAX; c++) {
                 const t = this.getTile(c, r);
-                if (t && t.type === 'GRASS' && !t.isRamp) {
+                if (t && t.type === 'GRASS' && !t.banditClaimed) {
+                    const key = `${c},${r}`;
+                    visited.add(key);
+                    if (!t.isRamp) reachable.add(key);
+                    queue.push([c, r]);
+                }
+            }
+        }
+
+        let head = 0;
+        while (head < queue.length) {
+            const [c, r] = queue[head++];
+            const src = this.getTile(c, r);
+            for (const [dc, dr] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                const nc = c + dc, nr = r + dr;
+                const key = `${nc},${nr}`;
+                if (visited.has(key)) continue;
+                const t = this.getTile(nc, nr);
+                if (!t || t.type !== 'GRASS' || t.banditClaimed) continue;
+
+                // Enforce height continuity: can't cross a cliff.
+                const hDiff = Math.abs(t.height - src.height);
+                if (hDiff > 1) continue;
+                if (hDiff === 1 && !t.isRamp && !src.isRamp) continue;
+
+                visited.add(key);
+                if (!t.isRamp) reachable.add(key);
+                queue.push([nc, nr]);
+            }
+        }
+        return reachable;
+    }
+
+    /**
+     * BFS flood-fill through ALL walkable GRASS tiles (including ramps and
+     * bandit-claimed tiles), mirroring warrior A* movement. Used to verify the
+     * bandit camp is reachable for the warrior march.
+     */
+    _walkableReachableFromStart() {
+        const reachable = new Set();
+        const queue     = [];
+
+        for (let r = VIS_MIN; r <= VIS_MAX; r++) {
+            for (let c = VIS_MIN; c <= VIS_MAX; c++) {
+                const t = this.getTile(c, r);
+                if (t && t.type === 'GRASS') {
                     const key = `${c},${r}`;
                     reachable.add(key);
                     queue.push([c, r]);
                 }
             }
         }
+
         let head = 0;
         while (head < queue.length) {
             const [c, r] = queue[head++];
+            const src = this.getTile(c, r);
             for (const [dc, dr] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
                 const nc = c + dc, nr = r + dr;
                 const key = `${nc},${nr}`;
                 if (reachable.has(key)) continue;
                 const t = this.getTile(nc, nr);
-                if (t && t.type === 'GRASS' && !t.isRamp) {
-                    reachable.add(key);
-                    queue.push([nc, nr]);
-                }
+                if (!t || t.type !== 'GRASS') continue;
+
+                const hDiff = Math.abs(t.height - src.height);
+                if (hDiff > 1) continue;
+                if (hDiff === 1 && !t.isRamp && !src.isRamp) continue;
+
+                reachable.add(key);
+                queue.push([nc, nr]);
             }
         }
         return reachable;

@@ -24,6 +24,8 @@ export class RoadSystem {
         const tile = tileMap.getTile(col, row);
         if (!tile)
             return { valid: false, reason: 'Out of bounds.' };
+        if (tile.banditClaimed)
+            return { valid: false, reason: 'Cannot build roads in bandit territory.' };
         if (tile.type !== 'GRASS')
             return { valid: false, reason: 'Roads can only be built on grass.' };
         if (tile.buildingId)

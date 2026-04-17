@@ -109,4 +109,10 @@ export const EventNames = Object.freeze({
     // Fog of war state changed for one or more tiles
     // payload: { changes: Array<{ col, row, state: 'hidden'|'border'|'visible' }> }
     FOG_UPDATED: 'fog:updated',
+
+    // Player requested to attack the bandit camp
+    BANDIT_CAMP_ATTACK_REQUEST: 'bandit:attack_request',
+
+    // Bandit camp was destroyed — payload: { clearedTiles: Array<{ col, row }> }
+    BANDIT_CAMP_CLEARED: 'bandit:camp_cleared',
 });

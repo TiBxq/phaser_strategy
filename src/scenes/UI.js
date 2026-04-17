@@ -83,6 +83,30 @@ export class UI extends Phaser.Scene {
             GameEvents.emit(EventNames.TILE_DESELECTED);
         });
 
+        GameEvents.on(EventNames.BANDIT_CAMP_ATTACK_REQUEST, () => {
+            // Count total assigned warriors across all Barracks
+            let warriors = 0;
+            for (const b of gameScene.buildSystem.placedBuildings.values()) {
+                if (b.configId === 'BARRACKS') warriors += b.assignedVillagers;
+            }
+            if (warriors < 5) {
+                GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: 'Need at least 5 warriors to attack.' });
+                return;
+            }
+
+            GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: 'Warriors marching to bandit camp!' });
+            const { campCol, campRow } = gameScene.banditCampSystem;
+
+            gameScene.warriorRenderer.marchAllTo(campCol, campRow, () => {
+                const { clearedTiles } = gameScene.banditCampSystem.clear(gameScene.tileMap);
+                gameScene.banditRenderer.clearCamp();
+                GameEvents.emit(EventNames.BANDIT_CAMP_CLEARED, { clearedTiles });
+                GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: 'Bandit camp destroyed!' });
+                GameEvents.emit(EventNames.TILE_DESELECTED);
+                gameScene.warriorRenderer.marchAllHome();
+            });
+        });
+
         // Trigger initial resource display
         const resources = gameScene.resourceSystem.getAll();
         GameEvents.emit(EventNames.RESOURCES_CHANGED, {

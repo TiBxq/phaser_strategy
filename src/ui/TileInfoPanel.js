@@ -145,9 +145,37 @@ export class TileInfoPanel {
             }
         });
 
+        // Attack Camp button (hidden by default, green tint)
+        this._attackBtn = scene.add.image(PX + 26, PY + 197, 'btn-normal')
+            .setOrigin(0, 0.5)
+            .setScrollFactor(0)
+            .setDepth(1001)
+            .setTint(0x336633)
+            .setVisible(false)
+            .setInteractive({ useHandCursor: true });
+
+        this._attackBtnLabel = scene.add.text(PX + 100, PY + 197, 'Attack Camp', BTN_LABEL_STYLE)
+            .setOrigin(0.5, 0.5)
+            .setScrollFactor(0)
+            .setDepth(1002)
+            .setVisible(false);
+
+        this._attackBtn.on('pointerover', () => {
+            if (this._attackBtn.visible) this._attackBtn.setTexture('btn-hover').setTint(0x44bb44);
+        });
+        this._attackBtn.on('pointerout', () => {
+            if (this._attackBtn.visible) this._attackBtn.setTexture('btn-normal').setTint(0x336633);
+        });
+        this._attackBtn.on('pointerdown', () => {
+            if (this._currentBanditCampTile) {
+                GameEvents.emit(EventNames.BANDIT_CAMP_ATTACK_REQUEST);
+            }
+        });
+
         this._currentUpgradeBuildingUid  = null;
         this._currentDemolishBuildingUid = null;
         this._currentDemolishRoadTile    = null;
+        this._currentBanditCampTile      = false;
 
         GameEvents.on(EventNames.TILE_SELECTED, ({ col, row, tile }) => {
             this._show(col, row, tile);
@@ -172,6 +200,10 @@ export class TileInfoPanel {
 
         GameEvents.on(EventNames.RESOURCES_CHANGED, () => {
             if (this._currentUpgradeBuildingUid) this._refreshUpgradeBtn();
+        });
+
+        GameEvents.on(EventNames.WARRIORS_CHANGED, () => {
+            if (this._currentBanditCampTile) this._refreshAttackBtn();
         });
 
         GameEvents.on(EventNames.PRODUCTION_TICK, () => {
@@ -218,12 +250,32 @@ export class TileInfoPanel {
     _show(col, row, tile) {
         this._currentTile = { col, row, tile };
 
-        const building = this.buildSystem.getBuildingAt(col, row);
-        const config   = building ? BUILDING_CONFIGS[building.configId] : null;
-
         this._bg.setVisible(true);
         this._titleText.setVisible(true);
         this._bodyText.setVisible(true);
+
+        // ── Bandit Camp tile ───────────────────────────────────────────────────
+        if (tile.banditCampTile) {
+            this._currentBanditCampTile = true;
+            this._noRoadText.setVisible(false);
+            this._starvationText.setVisible(false);
+            this._currentUpgradeBuildingUid  = null;
+            this._currentDemolishBuildingUid = null;
+            this._currentDemolishRoadTile    = null;
+            this._clearUpgradeBtn();
+            this._demolishBtn.setVisible(false);
+            this._demolishBtnLabel.setVisible(false);
+            this._titleText.setText('Bandit Camp');
+            this._bodyText.setText('Enemy encampment.\nClear to expand\nyour territory.\n\nRequires 5 warriors.');
+            this._refreshAttackBtn();
+            return;
+        }
+        this._currentBanditCampTile = false;
+        this._attackBtn.setVisible(false);
+        this._attackBtnLabel.setVisible(false);
+
+        const building = this.buildSystem.getBuildingAt(col, row);
+        const config   = building ? BUILDING_CONFIGS[building.configId] : null;
 
         if (config) {
             this._titleText.setText(config.label);
@@ -383,11 +435,33 @@ export class TileInfoPanel {
         this._upgradeBtnLabel.setVisible(false);
     }
 
+    _refreshAttackBtn() {
+        const enabled = this._totalWarriors() >= 5;
+        this._attackBtn.setVisible(true);
+        this._attackBtnLabel
+            .setVisible(true)
+            .setColor(enabled ? '#ffffff' : '#888888');
+        if (enabled) {
+            this._attackBtn.setInteractive({ useHandCursor: true });
+        } else {
+            this._attackBtn.disableInteractive();
+        }
+    }
+
+    _totalWarriors() {
+        let total = 0;
+        for (const b of this.buildSystem.placedBuildings.values()) {
+            if (b.configId === 'BARRACKS') total += b.assignedVillagers;
+        }
+        return total;
+    }
+
     _hide() {
         this._currentTile = null;
         this._currentUpgradeBuildingUid  = null;
         this._currentDemolishBuildingUid = null;
         this._currentDemolishRoadTile    = null;
+        this._currentBanditCampTile      = false;
         this._bg.setVisible(false);
         this._titleText.setVisible(false);
         this._bodyText.setVisible(false);
@@ -396,5 +470,7 @@ export class TileInfoPanel {
         this._clearUpgradeBtn();
         this._demolishBtn.setVisible(false);
         this._demolishBtnLabel.setText('Demolish').setVisible(false);
+        this._attackBtn.setVisible(false);
+        this._attackBtnLabel.setVisible(false);
     }
 }

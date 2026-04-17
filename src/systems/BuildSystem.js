@@ -53,6 +53,9 @@ export class BuildSystem {
         if (footprint.some(t => !config.buildableOn.includes(t.type)))
             return { valid: false, reason: `Must be built on ${config.buildableOn.join(' or ')}.` };
 
+        if (footprint.some(t => t.banditClaimed))
+            return { valid: false, reason: 'Cannot build in bandit territory.' };
+
         if (footprint.some(t => t.buildingId || t.isField || t.ownedBy || t.isRoad))
             return { valid: false, reason: 'Tile already occupied.' };
 

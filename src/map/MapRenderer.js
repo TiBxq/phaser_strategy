@@ -184,6 +184,12 @@ export class MapRenderer {
                 this.refreshFogTile(col, row);
             }
         });
+
+        GameEvents.on(EventNames.BANDIT_CAMP_CLEARED, ({ clearedTiles }) => {
+            for (const { col, row } of clearedTiles) {
+                this.refreshFogTile(col, row);
+            }
+        });
     }
 
     // ─── Fog of War ────────────────────────────────────────────────────────────
@@ -303,7 +309,10 @@ export class MapRenderer {
         const tile   = this.tileMap.getTile(col, row);
         const sprite = this.tileSprites[row][col];
         sprite.setTexture(tileTextureKey(tile));
-        if (tile.isRamp && !tile.isField) {
+        if (tile.banditClaimed && !tile.banditCampTile) {
+            // Red-orange tint marks visible bandit territory
+            sprite.setTint(0xaa4422);
+        } else if (tile.isRamp && !tile.isField) {
             sprite.setTint(0xffcc44);
         } else {
             sprite.clearTint();
