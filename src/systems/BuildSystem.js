@@ -302,6 +302,34 @@ export class BuildSystem {
         this.remove(uid, tileMap);
     }
 
+    /**
+     * Destroys a building with no resource refund (used for bandit pillaging).
+     * Otherwise identical to demolish(): unassigns workers, removes residents, undoes side-effects.
+     */
+    demolishHard(uid, tileMap, villagerManager) {
+        const building = this.placedBuildings.get(uid);
+        if (!building) return;
+
+        const config = BUILDING_CONFIGS[building.configId];
+
+        if (building.assignedVillagers > 0) {
+            villagerManager.unassign(uid, building.assignedVillagers, this);
+        }
+
+        if (config.onPlace === 'spawnVillager') {
+            for (let i = 0; i < building.residents; i++) {
+                villagerManager.removeVillager(this);
+            }
+        }
+
+        if (config.onPlace === 'increaseStorageCap') {
+            this.resourceSystem.setCap(this.resourceSystem.getCap() - CAP_PER_WAREHOUSE);
+        }
+
+        // No refund — this is pillaging
+        this.remove(uid, tileMap);
+    }
+
     getBuilding(uid) {
         return this.placedBuildings.get(uid) ?? null;
     }

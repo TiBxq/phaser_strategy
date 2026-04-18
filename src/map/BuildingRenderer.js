@@ -27,6 +27,9 @@ export class BuildingRenderer {
         this._noRoadSprites = new Map();
         // Map<uid, Phaser.GameObjects.Image> for starvation departure warning icons
         this._starvationSprites = new Map();
+        // Single sprite for the next pillage target (moved between buildings)
+        this._pillageTargetSprite = null;
+        this._pillageTargetTween  = null;
         // Ghost sprites
         this._ghost = null;
         this._currentGhostConfigId = null;
@@ -84,6 +87,14 @@ export class BuildingRenderer {
                 const b = this._buildSystem?.getBuilding(buildingUid);
                 if (b) this._addStarvationIcon(b);
             }
+        });
+
+        GameEvents.on(EventNames.BANDIT_PILLAGE_TARGET, ({ buildingUid }) => {
+            this._setPillageTargetIcon(buildingUid);
+        });
+
+        GameEvents.on(EventNames.BANDIT_CAMP_CLEARED, () => {
+            this._setPillageTargetIcon(null);
         });
 
         GameEvents.on(EventNames.VILLAGER_RETURNED, ({ buildingUid }) => {
@@ -225,6 +236,50 @@ export class BuildingRenderer {
             .setOrigin(0.5, 0.5)
             .setDepth(DEPTH_FLOATING_LABEL);
         this._starvationSprites.set(building.uid, sprite);
+    }
+
+    // ─── Pillage target icon ───────────────────────────────────────────────────
+
+    _setPillageTargetIcon(buildingUid) {
+        if (this._pillageTargetTween) {
+            this._pillageTargetTween.stop();
+            this._pillageTargetTween = null;
+        }
+
+        if (!buildingUid) {
+            if (this._pillageTargetSprite) this._pillageTargetSprite.setVisible(false);
+            return;
+        }
+
+        const building = this._buildSystem?.getBuilding(buildingUid);
+        if (!building) {
+            if (this._pillageTargetSprite) this._pillageTargetSprite.setVisible(false);
+            return;
+        }
+
+        const anchorTile = this.tileMap.getTile(building.col, building.row);
+        const anchorH    = anchorTile ? anchorTile.height : 0;
+        const { x, y }  = tileToWorld(building.col, building.row, anchorH);
+        // Position left of icon-no-road (centred at x, y-72) to avoid overlap
+        const ix = x - 22;
+        const iy = y - 72;
+
+        if (!this._pillageTargetSprite) {
+            this._pillageTargetSprite = this.scene.add.image(ix, iy, 'icon-pillage')
+                .setOrigin(0.5, 0.5)
+                .setDepth(DEPTH_FLOATING_LABEL);
+        } else {
+            this._pillageTargetSprite.setPosition(ix, iy).setAlpha(1).setVisible(true);
+        }
+
+        this._pillageTargetTween = this.scene.tweens.add({
+            targets:  this._pillageTargetSprite,
+            alpha:    { from: 1, to: 0.3 },
+            duration: 600,
+            yoyo:     true,
+            repeat:   -1,
+            ease:     'Sine.easeInOut',
+        });
     }
 
     // ─── Ghost preview ─────────────────────────────────────────────────────────

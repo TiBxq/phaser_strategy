@@ -14,6 +14,7 @@ import { WarriorRenderer } from '../warriors/WarriorRenderer.js';
 import { QuestSystem } from '../systems/QuestSystem.js';
 import { FogOfWarSystem, VIS_MIN, VIS_MAX } from '../systems/FogOfWarSystem.js';
 import { BanditCampSystem } from '../systems/BanditCampSystem.js';
+import { BanditThreatSystem } from '../systems/BanditThreatSystem.js';
 import { BanditRenderer } from '../bandits/BanditRenderer.js';
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
@@ -54,6 +55,15 @@ export class Game extends Phaser.Scene {
 
         this.banditCampSystem = new BanditCampSystem();
         this.banditCampSystem.initFromMap(this.tileMap);
+
+        this.banditThreatSystem = new BanditThreatSystem(
+            this.banditCampSystem,
+            this.fogOfWarSystem,
+            this.villagerManager,
+            this.resourceSystem,
+            this.buildSystem,
+            this.tileMap,
+        );
 
         this.mapRenderer      = new MapRenderer(this, this.tileMap);
         this.mapRenderer.setFogSystem(this.fogOfWarSystem);

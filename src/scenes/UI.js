@@ -6,6 +6,7 @@ import { VillagerPanel } from '../ui/VillagerPanel.js';
 import { BuildModeIndicator } from '../ui/BuildModeIndicator.js';
 import { NotificationManager } from '../ui/NotificationManager.js';
 import { HungerAlert } from '../ui/HungerAlert.js';
+import { BanditAlert } from '../ui/BanditAlert.js';
 import { QuestPanel } from '../ui/QuestPanel.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
@@ -26,6 +27,7 @@ export class UI extends Phaser.Scene {
         this.tileInfoPanel = new TileInfoPanel(this, gameScene.buildSystem, gameScene.tileMap, gameScene.resourceSystem);
         this.villagerPanel = new VillagerPanel(this, gameScene.buildSystem, gameScene.villagerManager);
         this.hungerAlert   = new HungerAlert(this);
+        this.banditAlert   = new BanditAlert(this);
         this.questPanel    = new QuestPanel(this, gameScene.questSystem);
 
         // Wire villager assignment events to VillagerManager

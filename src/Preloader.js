@@ -39,6 +39,7 @@ export class Preloader extends Phaser.Scene {
         this._generateTileOverlays();
         this._generateNoRoadIcon();
         this._generateStarvationIcon();
+        this._generatePillageIcon();
         this._generateIconTextures();
         this._generateBanditCampTexture();
         this.scene.start('Game');
@@ -285,6 +286,27 @@ export class Preloader extends Phaser.Scene {
         g.fillRect(cx - 1.5, 13, 3, 3);   // dot
 
         g.generateTexture('icon-starving', S, S);
+        g.destroy();
+    }
+
+    _generatePillageIcon() {
+        const S  = 20;
+        const cx = S / 2;
+        const cy = S / 2;
+        const g  = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Dark red filled circle with crimson border
+        g.fillStyle(0x880000, 1);
+        g.fillCircle(cx, cy, cx);
+        g.lineStyle(1.5, 0xff2222, 1);
+        g.strokeCircle(cx, cy, cx - 0.75);
+
+        // White X mark
+        g.lineStyle(2.5, 0xffffff, 1);
+        g.lineBetween(cx - 4, cy - 4, cx + 4, cy + 4);
+        g.lineBetween(cx + 4, cy - 4, cx - 4, cy + 4);
+
+        g.generateTexture('icon-pillage', S, S);
         g.destroy();
     }
 

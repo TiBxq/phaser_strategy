@@ -115,4 +115,10 @@ export const EventNames = Object.freeze({
 
     // Bandit camp was destroyed — payload: { clearedTiles: Array<{ col, row }> }
     BANDIT_CAMP_CLEARED: 'bandit:camp_cleared',
+
+    // Bandit threat escalated or ended — payload: { state: 'inactive'|'raiding'|'pillaging', stealAmount: number }
+    BANDIT_THREAT_STATE_CHANGED: 'bandit:threat_state_changed',
+
+    // A building has been marked as the next pillage target — payload: { buildingUid: string|null }
+    BANDIT_PILLAGE_TARGET: 'bandit:pillage_target',
 });
