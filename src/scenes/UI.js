@@ -7,6 +7,7 @@ import { BuildModeIndicator } from '../ui/BuildModeIndicator.js';
 import { NotificationManager } from '../ui/NotificationManager.js';
 import { HungerAlert } from '../ui/HungerAlert.js';
 import { BanditAlert } from '../ui/BanditAlert.js';
+import { FOG_VISIBLE } from '../systems/FogOfWarSystem.js';
 import { QuestPanel } from '../ui/QuestPanel.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
@@ -99,13 +100,36 @@ export class UI extends Phaser.Scene {
             GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: 'Warriors marching to bandit camp!' });
             const { campCol, campRow } = gameScene.banditCampSystem;
 
-            gameScene.warriorRenderer.marchAllTo(campCol, campRow, () => {
+            let cleared = false;
+            const doClear = () => {
+                if (cleared) return;
+                cleared = true;
+                GameEvents.off(EventNames.FOG_UPDATED, onFogUpdate);
                 const { clearedTiles } = gameScene.banditCampSystem.clear(gameScene.tileMap);
                 gameScene.banditRenderer.clearCamp();
                 GameEvents.emit(EventNames.BANDIT_CAMP_CLEARED, { clearedTiles });
                 GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: 'Bandit camp destroyed!' });
                 GameEvents.emit(EventNames.TILE_DESELECTED);
                 gameScene.warriorRenderer.marchAllHome();
+            };
+
+            // Primary trigger: camp clears the moment warriors illuminate it
+            const onFogUpdate = ({ changes }) => {
+                const campRevealed = changes.some(({ col, row, state }) => {
+                    if (state !== FOG_VISIBLE) return false;
+                    return gameScene.tileMap.getTile(col, row)?.banditCampTile;
+                });
+                if (campRevealed) doClear();
+            };
+            GameEvents.on(EventNames.FOG_UPDATED, onFogUpdate);
+
+            // Fallback: clear when first warrior physically arrives (safety net)
+            // If every warrior fails to path (building blocking the route), abort cleanly
+            gameScene.warriorRenderer.marchAllTo(campCol, campRow, doClear, () => {
+                cleared = true;  // suppress FOG_UPDATED trigger
+                GameEvents.off(EventNames.FOG_UPDATED, onFogUpdate);
+                GameEvents.emit(EventNames.SHOW_NOTIFICATION,
+                    { message: 'Path to bandit camp is blocked! Remove the obstacle.' });
             });
         });
 

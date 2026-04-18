@@ -8,6 +8,12 @@ export function isWalkable(tile) {
     return tile && tile.type === 'GRASS' && !tile.buildingId;
 }
 
+/** March-mode walkability: like isWalkable but ignores buildings so warriors
+ *  can pass through occupied tiles when no clear path exists. */
+export function isWalkableForMarch(tile) {
+    return tile && tile.type === 'GRASS';
+}
+
 /**
  * Movement cost between two adjacent tiles, used by A* for height-aware pathfinding.
  * - Same height: cost 1.

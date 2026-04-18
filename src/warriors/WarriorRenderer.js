@@ -6,9 +6,10 @@ import { EventNames } from '../events/EventNames.js';
 const SPAWN_RADIUS = 3;
 
 export class WarriorRenderer {
-    constructor(scene, tileMap) {
-        this._scene   = scene;
-        this._tileMap = tileMap;
+    constructor(scene, tileMap, fogSystem) {
+        this._scene     = scene;
+        this._tileMap   = tileMap;
+        this._fogSystem = fogSystem ?? null;
         // Map<buildingUid, WarriorEntity[]>
         this._pools   = new Map();
 
@@ -38,6 +39,7 @@ export class WarriorRenderer {
                 this._scene, this._tileMap,
                 tile.col, tile.row,
                 building.col, building.row,
+                this._fogSystem,
             ));
         }
         while (pool.length > target) {
@@ -59,20 +61,35 @@ export class WarriorRenderer {
      * Calls onFirstArrived() the first time any warrior arrives.
      * If there are no warriors, calls onFirstArrived() immediately.
      */
-    marchAllTo(targetCol, targetRow, onFirstArrived) {
+    /**
+     * March all warriors toward (targetCol, targetRow).
+     * onFirstArrived() fires the first time any warrior reaches the destination.
+     * onAllFailed() fires (instead) if every warrior found no path — e.g. blocked
+     * by a building. Checks entity._marching immediately after marchTo returns:
+     * synchronous immediate-fail leaves _marching=false; a live march leaves it true.
+     */
+    marchAllTo(targetCol, targetRow, onFirstArrived, onAllFailed) {
         let fired = false;
         const cb = () => {
             if (!fired) { fired = true; onFirstArrived(); }
         };
 
-        let count = 0;
+        let count     = 0;
+        let pathFound = 0;
         for (const pool of this._pools.values()) {
             for (const entity of pool) {
                 entity.marchTo(targetCol, targetRow, cb);
+                // _marching stays true when a valid path was found; false on immediate fail
+                if (entity._marching) pathFound++;
                 count++;
             }
         }
-        if (count === 0) onFirstArrived();
+
+        if (count === 0) {
+            onFirstArrived();
+        } else if (pathFound === 0 && onAllFailed) {
+            onAllFailed();
+        }
     }
 
     /** Command all warriors to march back to their home barracks. */

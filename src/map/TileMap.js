@@ -365,6 +365,7 @@ export class TileMap {
             for (let c = c0; c <= c0 + 1; c++) {
                 const t = this.getTile(c, r);
                 if (!t) continue;
+                t.type         = 'GRASS';  // footprint must be walkable for warrior A*
                 t.height       = minH;
                 t.isRamp       = false;
                 t.banditCampTile = true;

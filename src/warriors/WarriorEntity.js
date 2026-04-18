@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { tileToWorld, TILE_H } from '../map/MapRenderer.js';
 import { aStar } from '../pathfinding/AStar.js';
-import { isWalkable, randomWalkableTileNear, heightMoveCost } from '../villagers/walkable.js';
+import { isWalkable, isWalkableForMarch, randomWalkableTileNear, heightMoveCost } from '../villagers/walkable.js';
 import { LAYER_VILLAGER, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
 
 const MOVE_DURATION = 600;   // slightly slower than villagers
@@ -11,13 +11,14 @@ const MAX_RETRIES   = 3;
 const WANDER_RADIUS = 4;     // Manhattan radius around home barracks
 
 export class WarriorEntity {
-    constructor(scene, tileMap, col, row, homeCol, homeRow) {
-        this._scene   = scene;
-        this._tileMap = tileMap;
-        this.col      = col;
-        this.row      = row;
-        this._homeCol = homeCol;
-        this._homeRow = homeRow;
+    constructor(scene, tileMap, col, row, homeCol, homeRow, fogSystem) {
+        this._scene     = scene;
+        this._tileMap   = tileMap;
+        this._fogSystem = fogSystem ?? null;
+        this.col        = col;
+        this.row        = row;
+        this._homeCol   = homeCol;
+        this._homeRow   = homeRow;
         this._path     = [];
         this._pathStep = 0;
 
@@ -74,10 +75,18 @@ export class WarriorEntity {
             heightMoveCost,
         );
 
+        // All positions to try: anchor + other footprint tiles + 8-tile 2×2 perimeter
+        const allOffsets = [
+            [1,0],[0,1],[1,1],              // other footprint tiles
+            [-1,0],[-1,1],                  // left perimeter
+            [2,0],[2,1],                    // right perimeter
+            [0,-1],[1,-1],                  // top perimeter
+            [0,2],[1,2],                    // bottom perimeter
+        ];
+
         if (path.length < 2) {
-            // Target may be non-walkable — try 4-directional neighbours
-            const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
-            for (const [dc, dr] of dirs) {
+            // Normal walkability failed — try all perimeter positions
+            for (const [dc, dr] of allOffsets) {
                 const alt = aStar(
                     this._tileMap,
                     { col: this.col, row: this.row },
@@ -90,7 +99,23 @@ export class WarriorEntity {
         }
 
         if (path.length < 2) {
-            // Still unreachable — fire callback immediately
+            // Buildings are blocking — retry ignoring their footprints so warriors
+            // can march through occupied tiles (buildings are passable in combat).
+            for (const offset of [[0,0], ...allOffsets]) {
+                const [dc, dr] = offset;
+                const alt = aStar(
+                    this._tileMap,
+                    { col: this.col, row: this.row },
+                    { col: targetCol + dc, row: targetRow + dr },
+                    isWalkableForMarch,
+                    heightMoveCost,
+                );
+                if (alt.length >= 2) { path = alt; break; }
+            }
+        }
+
+        if (path.length < 2) {
+            // Truly unreachable (terrain cliffs) — fire callback immediately
             this._marching = false;
             this._marchCallback = null;
             if (onArrived) onArrived();
@@ -179,6 +204,10 @@ export class WarriorEntity {
                 this.row = next.row;
                 this._sprite.setDepth(dstDepth);
                 this._pathStep++;
+                // Reveal fog along the march path so warriors illuminate their advance
+                if (this._marching && this._fogSystem) {
+                    this._fogSystem.revealAround(this.col, this.row, 1);
+                }
                 this._walkStep();
             },
         });
