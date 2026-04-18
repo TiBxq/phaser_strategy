@@ -8,10 +8,20 @@ export function isWalkable(tile) {
     return tile && tile.type === 'GRASS' && !tile.buildingId;
 }
 
-/** March-mode walkability: like isWalkable but ignores buildings so warriors
- *  can pass through occupied tiles when no clear path exists. */
+/** March-mode walkability: GRASS only, ignores buildings (they're passable at high cost). */
 export function isWalkableForMarch(tile) {
     return tile && tile.type === 'GRASS';
+}
+
+const BUILDING_MARCH_COST = 20;  // high enough that A* prefers a ~20-tile detour
+
+/** Movement cost for marching warriors: same as heightMoveCost but adds a large
+ *  penalty for tiles occupied by buildings so the pathfinder routes around them
+ *  unless no reasonable detour exists. */
+export function marchMoveCost(fromTile, toTile) {
+    const base = heightMoveCost(fromTile, toTile);
+    if (base === Infinity) return Infinity;
+    return base + (toTile.buildingId ? BUILDING_MARCH_COST : 0);
 }
 
 /**
