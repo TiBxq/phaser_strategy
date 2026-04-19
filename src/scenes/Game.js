@@ -73,6 +73,9 @@ export class Game extends Phaser.Scene {
         this.banditRenderer   = new BanditRenderer(this, this.tileMap, this.banditCampSystem, this.fogOfWarSystem);
         this.floatingLabels   = new FloatingLabels(this);
 
+        // ── Music ──────────────────────────────────────────────────────────────
+        this.sound.play('music-ambient', { loop: true, volume: 0.6 });
+
         // ── Camera ─────────────────────────────────────────────────────────────
         this._setupCamera();
 

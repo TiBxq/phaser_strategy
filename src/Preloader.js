@@ -31,6 +31,9 @@ export class Preloader extends Phaser.Scene {
         // UI icon spritesheet (16×16 frames)
         this.load.image('icons-sheet', 'assets/ui/icons/items_sheet.png');
 
+        // Music
+        this.load.audio('music-ambient', 'assets/music/Ambient.wav');
+
         this._generateUITextures();
     }
 
