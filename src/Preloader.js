@@ -25,7 +25,8 @@ export class Preloader extends Phaser.Scene {
         this.load.image('building-townhall',   'assets/buildings/town_hall.png');
         this.load.image('building-iron-mine',  'assets/buildings/iron_mine.png');
         this.load.image('building-smithy',     'assets/buildings/smithy.png');
-        this.load.image('building-barracks',   'assets/buildings/barracks.png');
+        this.load.image('building-barracks',     'assets/buildings/barracks.png');
+        this.load.image('building-bandit-camp', 'assets/buildings/bandit_camp.png');
 
         // UI icon spritesheet (16×16 frames)
         this.load.image('icons-sheet', 'assets/ui/icons/items_sheet.png');
@@ -41,7 +42,6 @@ export class Preloader extends Phaser.Scene {
         this._generateStarvationIcon();
         this._generatePillageIcon();
         this._generateIconTextures();
-        this._generateBanditCampTexture();
         this.scene.start('Game');
     }
 
@@ -448,102 +448,6 @@ export class Preloader extends Phaser.Scene {
         g.strokeRect(2, 6, 6, 5);
         g.generateTexture(key, 10, 14);
         g.destroy();
-    }
-
-    /**
-     * Generate the bandit camp building sprite (128×96 px — same canvas size as
-     * other 2×2 building sprites so depth sorting works correctly).
-     * Draws a dark palisade encampment with a skull banner and torches.
-     */
-    _generateBanditCampTexture() {
-        const W = 128;
-        const H = 96;
-        const dest = this.textures.createCanvas('building-bandit-camp', W, H);
-        const ctx  = dest.getContext();
-        ctx.imageSmoothingEnabled = false;
-
-        // ── Ground shadow ──────────────────────────────────────────────────────
-        ctx.fillStyle = '#1a0d00';
-        ctx.beginPath();
-        ctx.ellipse(64, 80, 50, 16, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // ── Palisade walls (dark wooden posts) ────────────────────────────────
-        const WALL_COLOR  = '#3d2200';
-        const POST_COLOR  = '#4a2800';
-        const POST_DARK   = '#2a1500';
-
-        // Main rectangular wall outline
-        ctx.fillStyle = WALL_COLOR;
-        ctx.fillRect(24, 44, 80, 36);
-
-        // Vertical posts along the front wall
-        const postXs = [24, 36, 48, 60, 72, 84, 96, 104];
-        for (const px of postXs) {
-            ctx.fillStyle = POST_COLOR;
-            ctx.fillRect(px, 40, 6, 40);
-            ctx.fillStyle = POST_DARK;
-            ctx.fillRect(px, 40, 2, 40);
-            // Pointed top
-            ctx.fillStyle = POST_COLOR;
-            ctx.beginPath();
-            ctx.moveTo(px + 3, 35);
-            ctx.lineTo(px + 6, 40);
-            ctx.lineTo(px, 40);
-            ctx.closePath();
-            ctx.fill();
-        }
-
-        // ── Skull banner (centre-top) ──────────────────────────────────────────
-        // Banner pole
-        ctx.fillStyle = '#5a3800';
-        ctx.fillRect(62, 12, 4, 30);
-
-        // Banner cloth (dark red)
-        ctx.fillStyle = '#660000';
-        ctx.fillRect(66, 12, 22, 16);
-        ctx.fillStyle = '#440000';
-        ctx.fillRect(66, 12, 22, 4);
-
-        // Skull shape on banner (white/grey)
-        ctx.fillStyle = '#ddddcc';
-        ctx.fillRect(70, 14, 12, 10);   // skull head
-        ctx.fillRect(72, 24, 8, 4);     // jaw
-
-        // Eye sockets (dark)
-        ctx.fillStyle = '#330000';
-        ctx.fillRect(71, 16, 3, 3);     // left eye
-        ctx.fillRect(76, 16, 3, 3);     // right eye
-        ctx.fillRect(74, 21, 2, 2);     // nose
-        // Teeth
-        ctx.fillStyle = '#ddddcc';
-        ctx.fillRect(72, 26, 2, 2);
-        ctx.fillRect(75, 26, 2, 2);
-        ctx.fillRect(78, 26, 2, 2);
-
-        // ── Torches (orange glow on corners) ──────────────────────────────────
-        const torches = [[26, 44], [100, 44]];
-        for (const [tx, ty] of torches) {
-            // Torch pole
-            ctx.fillStyle = '#5a3800';
-            ctx.fillRect(tx - 1, ty - 8, 2, 10);
-            // Flame (orange)
-            ctx.fillStyle = '#ff6600';
-            ctx.beginPath();
-            ctx.ellipse(tx, ty - 10, 3, 5, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#ffcc00';
-            ctx.beginPath();
-            ctx.ellipse(tx, ty - 11, 1.5, 3, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // Glow halo (soft orange, semi-transparent)
-            ctx.fillStyle = 'rgba(255, 100, 0, 0.15)';
-            ctx.beginPath();
-            ctx.ellipse(tx, ty - 8, 10, 10, 0, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        dest.refresh();
     }
 
 }
