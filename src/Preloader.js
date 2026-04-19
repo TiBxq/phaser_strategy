@@ -45,7 +45,7 @@ export class Preloader extends Phaser.Scene {
         this._generateStarvationIcon();
         this._generatePillageIcon();
         this._generateIconTextures();
-        this.scene.start('Game');
+        this.scene.start('Menu');
     }
 
     // ─── Tiles ───────────────────────────────────────────────────────────────
