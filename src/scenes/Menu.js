@@ -15,7 +15,7 @@ export class Menu extends Phaser.Scene {
         bg.fillRect(0, 0, W, H);
 
         // Title
-        this.add.text(W / 2, H / 2 - 80, 'The Settlement', {
+        this.add.text(W / 2, H / 2 - 80, 'Homestead Frontier', {
             fontFamily: 'monospace',
             fontSize:   '36px',
             fontStyle:  'bold',
