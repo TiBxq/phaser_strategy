@@ -85,10 +85,34 @@ export class QuestSystem {
 
         GameEvents.emit(EventNames.QUEST_STARTED, { quest });
 
+        // Auto-complete any tasks already satisfied at quest start.
+        this._checkExistingState();
+
         // Terminal quest has no tasks — emit completed immediately so the panel
         // can switch to its congratulation state.
         if (quest.tasks.length === 0) {
             GameEvents.emit(EventNames.QUEST_COMPLETED, { quest });
+        }
+    }
+
+    _checkExistingState() {
+        const placed = [...this._buildSystem.placedBuildings.values()];
+        for (const task of this.currentQuest.tasks) {
+            if (task.type === 'buildingPlaced') {
+                if (placed.some(b => b.configId === task.configId)) this._completeTask(task.id);
+            } else if (task.type === 'buildingConnected') {
+                if (placed.some(b => b.isConnected && b.configId !== 'TOWN_HALL')) this._completeTask(task.id);
+            } else if (task.type === 'workerAssigned') {
+                if (placed.some(b => b.assignedVillagers >= 1)) this._completeTask(task.id);
+            } else if (task.type === 'warriorsHired') {
+                const total = placed.filter(b => b.configId === 'BARRACKS')
+                    .reduce((s, b) => s + b.assignedVillagers, 0);
+                if (total >= task.count) this._completeTask(task.id);
+            } else if (task.type === 'populationReached') {
+                if (this._villagerManager.total >= task.count) this._completeTask(task.id);
+            } else if (task.type === 'goldCollected') {
+                if (this._resourceSystem.get('money') >= task.amount) this._completeTask(task.id);
+            }
         }
     }
 
