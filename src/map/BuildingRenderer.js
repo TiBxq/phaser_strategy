@@ -28,6 +28,10 @@ export class BuildingRenderer {
         this._noRoadSprites = new Map();
         // Map<uid, Phaser.GameObjects.Image> for starvation departure warning icons
         this._starvationSprites = new Map();
+        // Map<uid, Phaser.GameObjects.Image> for "no workers assigned" warning icons
+        this._noWorkerSprites = new Map();
+        // Map<uid, Phaser.GameObjects.Image> for "resource depleted" warning icons
+        this._depletedSprites = new Map();
         // Single sprite for the next pillage target (moved between buildings)
         this._pillageTargetSprite = null;
         this._pillageTargetTween  = null;
@@ -47,10 +51,13 @@ export class BuildingRenderer {
         GameEvents.on(EventNames.BUILDING_PLACED, ({ building }) => {
             this._addBuilding(building);
             this._refreshNoRoadIcons();
+            this._refreshNoWorkerIcons();
+            this._refreshDepletedIcons();
         });
 
         GameEvents.on(EventNames.BUILDING_CONNECTIVITY_CHANGED, () => {
             this._refreshNoRoadIcons();
+            this._refreshNoWorkerIcons();
         });
 
         GameEvents.on(EventNames.BUILDING_REMOVED, ({ uid, fieldTiles }) => {
@@ -59,6 +66,7 @@ export class BuildingRenderer {
 
         GameEvents.on(EventNames.VILLAGERS_CHANGED, () => {
             this._updateWorkerTiles();
+            this._refreshNoWorkerIcons();
         });
 
         GameEvents.on(EventNames.TILE_SELECTED, ({ col, row }) => {
@@ -88,6 +96,11 @@ export class BuildingRenderer {
                 const b = this._buildSystem?.getBuilding(buildingUid);
                 if (b) this._addStarvationIcon(b);
             }
+        });
+
+        GameEvents.on(EventNames.TILE_DEPLETED, ({ buildingUid }) => {
+            this._refreshDepletedIcons();
+            this._refreshNoWorkerIcons();
         });
 
         GameEvents.on(EventNames.BANDIT_PILLAGE_TARGET, ({ buildingUid }) => {
@@ -242,6 +255,14 @@ export class BuildingRenderer {
         // Destroy starvation departure icon
         const starving = this._starvationSprites.get(uid);
         if (starving) { starving.destroy(); this._starvationSprites.delete(uid); }
+
+        // Destroy no-workers icon
+        const noWorker = this._noWorkerSprites.get(uid);
+        if (noWorker) { noWorker.destroy(); this._noWorkerSprites.delete(uid); }
+
+        // Destroy depleted icon
+        const depleted = this._depletedSprites.get(uid);
+        if (depleted) { depleted.destroy(); this._depletedSprites.delete(uid); }
     }
 
     // ─── Worker tiles ──────────────────────────────────────────────────────────
@@ -316,6 +337,68 @@ export class BuildingRenderer {
             .setOrigin(0.5, 0.5)
             .setDepth(DEPTH_FLOATING_LABEL);
         this._starvationSprites.set(building.uid, sprite);
+    }
+
+    // ─── No-workers icons ─────────────────────────────────────────────────────
+
+    _isNoWorkersBuilding(building) {
+        if (!building.isConnected) return false;
+        if (building.assignedVillagers > 0) return false;
+        const config = BUILDING_CONFIGS[building.configId];
+        if (config.maxVillagers > 0) return !this._isBuildingDepleted(building);
+        if (config.claimsTileType === 'GRASS')   return building.fieldTiles.length > 0;
+        if (config.claimsTileType === 'FOREST')  return building.forestTiles.length > 0 && !this._isBuildingDepleted(building);
+        return false;
+    }
+
+    _isBuildingDepleted(building) {
+        let tiles;
+        if (building.configId === 'LUMBERMILL') tiles = building.forestTiles;
+        else if (building.configId === 'QUARRY')     tiles = building.rocksTiles;
+        else if (building.configId === 'IRON_MINE')  tiles = building.ironTiles;
+        else return false;
+        if (!tiles || tiles.length === 0) return false;
+        return tiles.every(ft => (this.tileMap.getTile(ft.col, ft.row)?.resources ?? 0) === 0);
+    }
+
+    _refreshNoWorkerIcons() {
+        for (const s of this._noWorkerSprites.values()) s.destroy();
+        this._noWorkerSprites.clear();
+        if (!this._buildSystem) return;
+        for (const building of this._buildSystem.placedBuildings.values()) {
+            if (this._isNoWorkersBuilding(building)) this._addNoWorkerIcon(building);
+        }
+    }
+
+    _addNoWorkerIcon(building) {
+        const anchorTile = this.tileMap.getTile(building.col, building.row);
+        const anchorH    = anchorTile ? anchorTile.height : 0;
+        const { x, y }  = tileToWorld(building.col, building.row, anchorH);
+        // +22px right of center (same slot as starvation — they never coexist)
+        const sprite = this.scene.add.image(x + 22, y - 72, 'icon-no-workers')
+            .setOrigin(0.5, 0.5)
+            .setDepth(DEPTH_FLOATING_LABEL);
+        this._noWorkerSprites.set(building.uid, sprite);
+    }
+
+    _refreshDepletedIcons() {
+        for (const s of this._depletedSprites.values()) s.destroy();
+        this._depletedSprites.clear();
+        if (!this._buildSystem) return;
+        for (const building of this._buildSystem.placedBuildings.values()) {
+            if (this._isBuildingDepleted(building)) this._addDepletedIcon(building);
+        }
+    }
+
+    _addDepletedIcon(building) {
+        const anchorTile = this.tileMap.getTile(building.col, building.row);
+        const anchorH    = anchorTile ? anchorTile.height : 0;
+        const { x, y }  = tileToWorld(building.col, building.row, anchorH);
+        // +44px right of center
+        const sprite = this.scene.add.image(x + 44, y - 72, 'icon-depleted')
+            .setOrigin(0.5, 0.5)
+            .setDepth(DEPTH_FLOATING_LABEL);
+        this._depletedSprites.set(building.uid, sprite);
     }
 
     // ─── Pillage target icon ───────────────────────────────────────────────────

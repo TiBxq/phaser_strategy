@@ -48,6 +48,8 @@ export class Preloader extends Phaser.Scene {
         this._generateNoRoadIcon();
         this._generateStarvationIcon();
         this._generatePillageIcon();
+        this._generateNoWorkersIcon();
+        this._generateDepletedIcon();
         this._generateIconTextures();
         this._generateParticleTextures();
         this.scene.start('Menu');
@@ -319,6 +321,48 @@ export class Preloader extends Phaser.Scene {
     }
 
     // ─── UI ──────────────────────────────────────────────────────────────────
+
+    _generateNoWorkersIcon() {
+        const S  = 20;
+        const cx = S / 2;
+        const cy = S / 2;
+        const g  = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Gold filled circle
+        g.fillStyle(0xddaa00, 1);
+        g.fillCircle(cx, cy, cx);
+        g.lineStyle(1.5, 0x886600, 1);
+        g.strokeCircle(cx, cy, cx - 0.75);
+
+        // White "Z" for idle/sleeping
+        g.lineStyle(2, 0xffffff, 1);
+        g.lineBetween(cx - 4, cy - 4, cx + 4, cy - 4);
+        g.lineBetween(cx + 4, cy - 4, cx - 4, cy + 4);
+        g.lineBetween(cx - 4, cy + 4, cx + 4, cy + 4);
+
+        g.generateTexture('icon-no-workers', S, S);
+        g.destroy();
+    }
+
+    _generateDepletedIcon() {
+        const S  = 20;
+        const cx = S / 2;
+        const cy = S / 2;
+        const g  = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Gray filled circle
+        g.fillStyle(0x666666, 1);
+        g.fillCircle(cx, cy, cx);
+        g.lineStyle(1.5, 0x333333, 1);
+        g.strokeCircle(cx, cy, cx - 0.75);
+
+        // White dash — empty/exhausted symbol
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(cx - 5, cy - 1.5, 10, 3);
+
+        g.generateTexture('icon-depleted', S, S);
+        g.destroy();
+    }
 
     _generateIconTextures() {
         const src = this.textures.get('icons-sheet').getSourceImage();

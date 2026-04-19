@@ -108,6 +108,24 @@ export class TileInfoPanel {
             .setDepth(1002)
             .setVisible(false);
 
+        this._noWorkersText = scene.add.text(PX + 8, PY + 32, '⚠ No workers assigned!', {
+            fontFamily: 'monospace',
+            fontSize:   '10px',
+            color:      '#ddaa00',
+        })
+            .setScrollFactor(0)
+            .setDepth(1001)
+            .setVisible(false);
+
+        this._depletedText = scene.add.text(PX + 8, PY + 32, '— Resource depleted', {
+            fontFamily: 'monospace',
+            fontSize:   '10px',
+            color:      '#888888',
+        })
+            .setScrollFactor(0)
+            .setDepth(1001)
+            .setVisible(false);
+
         // Pillage target warning (shown when this building is the bandit's next target)
         this._pillageWarningText = scene.add.text(PX + 8, PY + 32, '⚠ Targeted by bandits!', {
             fontFamily: 'monospace',
@@ -270,6 +288,12 @@ export class TileInfoPanel {
                 this._show(this._currentTile.col, this._currentTile.row, this._currentTile.tile);
         });
 
+        GameEvents.on(EventNames.VILLAGERS_CHANGED, () => {
+            if (!this._currentTile) return;
+            const b = this.buildSystem.getBuildingAt(this._currentTile.col, this._currentTile.row);
+            if (b) this._show(this._currentTile.col, this._currentTile.row, this._currentTile.tile);
+        });
+
         GameEvents.on(EventNames.VILLAGER_RETURNED, ({ buildingUid }) => {
             if (!this._currentTile) return;
             const b = this.buildSystem.getBuildingAt(this._currentTile.col, this._currentTile.row);
@@ -291,6 +315,8 @@ export class TileInfoPanel {
             this._noRoadText.setVisible(false);
             this._starvationText.setVisible(false);
             this._pillageWarningText.setVisible(false);
+            this._noWorkersText.setVisible(false);
+            this._depletedText.setVisible(false);
             this._currentUpgradeBuildingUid  = null;
             this._currentDemolishBuildingUid = null;
             this._currentDemolishRoadTile    = null;
@@ -384,6 +410,36 @@ export class TileInfoPanel {
                 this._pillageWarningText.setVisible(false);
             }
 
+            // No-workers warning
+            const depleted = this._isBuildingDepleted(building);
+            const effectiveMax = config.maxVillagers > 0 ? config.maxVillagers
+                : config.claimsTileType === 'GRASS'   ? building.fieldTiles.length
+                : config.claimsTileType === 'FOREST'  ? building.forestTiles.length
+                : 0;
+            if (building.isConnected && effectiveMax > 0 && building.assignedVillagers === 0 && !depleted) {
+                const noRoadH  = this._noRoadText.visible      ? this._noRoadText.height      + 4 : 0;
+                const starvH   = this._starvationText.visible  ? this._starvationText.height  + 4 : 0;
+                const pillageH = this._pillageWarningText.visible ? this._pillageWarningText.height + 4 : 0;
+                this._noWorkersText
+                    .setY(PY + 32 + this._bodyText.height + 4 + noRoadH + starvH + pillageH)
+                    .setVisible(true);
+            } else {
+                this._noWorkersText.setVisible(false);
+            }
+
+            // Depleted warning
+            if (depleted) {
+                const noRoadH   = this._noRoadText.visible       ? this._noRoadText.height       + 4 : 0;
+                const starvH    = this._starvationText.visible   ? this._starvationText.height   + 4 : 0;
+                const pillageH  = this._pillageWarningText.visible ? this._pillageWarningText.height + 4 : 0;
+                const workersH  = this._noWorkersText.visible    ? this._noWorkersText.height    + 4 : 0;
+                this._depletedText
+                    .setY(PY + 32 + this._bodyText.height + 4 + noRoadH + starvH + pillageH + workersH)
+                    .setVisible(true);
+            } else {
+                this._depletedText.setVisible(false);
+            }
+
             if (config.upgradesTo) {
                 this._currentUpgradeBuildingUid = building.uid;
                 this._refreshUpgradeBtn();
@@ -407,6 +463,8 @@ export class TileInfoPanel {
             this._noRoadText.setVisible(false);
             this._starvationText.setVisible(false);
             this._pillageWarningText.setVisible(false);
+            this._noWorkersText.setVisible(false);
+            this._depletedText.setVisible(false);
             this._titleText.setText('Road');
             this._bodyText.setText('Road tile.\nConnects buildings\nto the Town Hall.\n\nReturns 1 money\nif removed.');
             this._currentUpgradeBuildingUid  = null;
@@ -419,6 +477,8 @@ export class TileInfoPanel {
             this._noRoadText.setVisible(false);
             this._starvationText.setVisible(false);
             this._pillageWarningText.setVisible(false);
+            this._noWorkersText.setVisible(false);
+            this._depletedText.setVisible(false);
             this._titleText.setText(`Tile (${col}, ${row})`);
             const typeLabel = tile.isField
                 ? 'Farm Field'
@@ -480,6 +540,16 @@ export class TileInfoPanel {
         this._upgradeBtnLabel.setVisible(false);
     }
 
+    _isBuildingDepleted(building) {
+        let tiles;
+        if (building.configId === 'LUMBERMILL') tiles = building.forestTiles;
+        else if (building.configId === 'QUARRY')    tiles = building.rocksTiles;
+        else if (building.configId === 'IRON_MINE') tiles = building.ironTiles;
+        else return false;
+        if (!tiles || tiles.length === 0) return false;
+        return tiles.every(ft => (this.tileMap.getTile(ft.col, ft.row)?.resources ?? 0) === 0);
+    }
+
     _refreshAttackBtn() {
         const enabled = this._totalWarriors() >= 5;
         this._attackBtn.setVisible(true);
@@ -513,6 +583,8 @@ export class TileInfoPanel {
         this._noRoadText.setVisible(false);
         this._starvationText.setVisible(false);
         this._pillageWarningText.setVisible(false);
+        this._noWorkersText.setVisible(false);
+        this._depletedText.setVisible(false);
         this._clearUpgradeBtn();
         this._demolishBtn.setVisible(false);
         this._demolishBtnLabel.setText('Demolish').setVisible(false);
