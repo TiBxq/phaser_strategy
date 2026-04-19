@@ -34,6 +34,10 @@ export class Preloader extends Phaser.Scene {
         // Music
         this.load.audio('music-ambient', 'assets/music/Ambient.wav');
 
+        // SFX
+        this.load.audio('sfx-build',   'assets/sfx/build.wav');
+        this.load.audio('sfx-destroy', 'assets/sfx/destroy.wav');
+
         this._generateUITextures();
     }
 
@@ -45,6 +49,7 @@ export class Preloader extends Phaser.Scene {
         this._generateStarvationIcon();
         this._generatePillageIcon();
         this._generateIconTextures();
+        this._generateParticleTextures();
         this.scene.start('Menu');
     }
 
@@ -353,6 +358,32 @@ export class Preloader extends Phaser.Scene {
         iCtx.fillStyle = '#ff8844';
         iCtx.fillRect(3, 6, 10, 2);    // highlight streak
         ironIcon.refresh();
+    }
+
+    _generateParticleTextures() {
+        // Soft cloud puff — gradient circle for large dust billows
+        const SIZE = 64;
+        const cx   = SIZE / 2;
+        const dest = this.textures.createCanvas('particle-dust', SIZE, SIZE);
+        const ctx  = dest.getContext();
+        const grad = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
+        grad.addColorStop(0,    'rgba(255,255,255,0.95)');
+        grad.addColorStop(0.35, 'rgba(255,255,255,0.65)');
+        grad.addColorStop(0.65, 'rgba(255,255,255,0.2)');
+        grad.addColorStop(1,    'rgba(255,255,255,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, SIZE, SIZE);
+        dest.refresh();
+
+        // Solid dot — fully opaque small particle for debris specks
+        const DOT = 6;
+        const dot  = this.textures.createCanvas('particle-dot', DOT, DOT);
+        const dctx = dot.getContext();
+        dctx.fillStyle = 'rgba(255,255,255,1)';
+        dctx.beginPath();
+        dctx.arc(DOT / 2, DOT / 2, DOT / 2, 0, Math.PI * 2);
+        dctx.fill();
+        dot.refresh();
     }
 
     _generateUITextures() {

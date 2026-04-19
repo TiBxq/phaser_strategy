@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { tileToWorld, TILE_DEPTH, TILE_H } from './MapRenderer.js';
 import { GameEvents } from '../events/GameEvents.js';
@@ -121,6 +122,8 @@ export class BuildingRenderer {
             .setDepth(depth);
 
         this._buildingSprites.set(building.uid, img);
+        this._spawnPlacementEffect(x, y, depth);
+        this.scene.sound.play('sfx-build', { volume: 0.7 });
 
         // Farm fields: 4 individual tile sprites per 2×2 block
         for (const block of building.fieldTiles) {
@@ -128,6 +131,78 @@ export class BuildingRenderer {
                 this._addFieldSprite(block.col + dc, block.row + dr);
             }
         }
+    }
+
+    _spawnPlacementEffect(x, y, buildingDepth) {
+        const depth = buildingDepth + 0.5;
+
+        // Big dust puffs
+        const puffs = this.scene.add.particles(x, y - 20, 'particle-dust', {
+            emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, 38) },
+            angle:    { min: 190, max: 350 },
+            speed:    { min: 60, max: 150 },
+            gravityY: 50,
+            scale:    { start: 2.2, end: 0 },
+            alpha:    { start: 0.85, end: 0 },
+            lifespan: { min: 650, max: 1100 },
+            tint:     [0xfff0cc, 0xffeebb, 0xeeddaa, 0xffffff],
+            quantity: 22,
+            stopAfter: 22,
+        });
+        puffs.setDepth(depth);
+        this.scene.time.delayedCall(1300, () => puffs.destroy());
+
+        // Dense opaque debris specks
+        const specks = this.scene.add.particles(x, y - 16, 'particle-dot', {
+            emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, 32) },
+            angle:    { min: 150, max: 390 },
+            speed:    { min: 80, max: 220 },
+            gravityY: 220,
+            scale:    { start: 2.8, end: 0.4 },
+            alpha:    { start: 1.0, end: 0 },
+            lifespan: { min: 400, max: 750 },
+            tint:     [0xddbb88, 0xccaa77, 0xeeccaa, 0xbbaa88, 0xaa9966, 0xffd9a0],
+            quantity: 60,
+            stopAfter: 60,
+        });
+        specks.setDepth(depth);
+        this.scene.time.delayedCall(950, () => specks.destroy());
+    }
+
+    _spawnDemolitionEffect(x, y, buildingDepth) {
+        const depth = buildingDepth + 0.5;
+
+        // Big billowing dust cloud
+        const dust = this.scene.add.particles(x, y - 36, 'particle-dust', {
+            emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, 42) },
+            angle:    { min: 180, max: 360 },
+            speed:    { min: 40, max: 100 },
+            gravityY: 8,
+            scale:    { start: 2.6, end: 0 },
+            alpha:    { start: 0.85, end: 0 },
+            lifespan: { min: 900, max: 1500 },
+            tint:     [0xdddddd, 0xcccccc, 0xeeeeee, 0xffffff],
+            quantity: 22,
+            stopAfter: 22,
+        });
+        dust.setDepth(depth);
+        this.scene.time.delayedCall(1800, () => dust.destroy());
+
+        // Massive spray of opaque debris specks
+        const specks = this.scene.add.particles(x, y - 18, 'particle-dot', {
+            emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, 30) },
+            angle:    { min: 130, max: 410 },
+            speed:    { min: 120, max: 280 },
+            gravityY: 320,
+            scale:    { start: 3.2, end: 0.2 },
+            alpha:    { start: 1.0, end: 0 },
+            lifespan: { min: 450, max: 800 },
+            tint:     [0x999988, 0x888877, 0xaaaaaa, 0x776655, 0xbbbbaa, 0x554433],
+            quantity: 70,
+            stopAfter: 70,
+        });
+        specks.setDepth(depth);
+        this.scene.time.delayedCall(1000, () => specks.destroy());
     }
 
     _addFieldSprite(col, row) {
@@ -144,7 +219,12 @@ export class BuildingRenderer {
 
     _removeBuilding(uid, fieldTiles = []) {
         const img = this._buildingSprites.get(uid);
-        if (img) { img.destroy(); this._buildingSprites.delete(uid); }
+        if (img) {
+            this._spawnDemolitionEffect(img.x, img.y, img.depth);
+            this.scene.sound.play('sfx-destroy', { volume: 0.7 });
+            img.destroy();
+            this._buildingSprites.delete(uid);
+        }
 
         // Destroy farm field sprites for all tiles in each released 2×2 field block
         for (const block of fieldTiles) {
