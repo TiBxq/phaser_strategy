@@ -21,9 +21,14 @@ export class FloatingLabels {
         this._scene = scene;
 
         GameEvents.on(EventNames.PRODUCTION_TICK, ({ yields }) => {
+            const offsetByUid = new Map();
             for (const entry of yields) {
+                const idx = offsetByUid.get(entry.uid) ?? 0;
+                offsetByUid.set(entry.uid, idx + 1);
+                const negative = entry.amount < 0;
+                const label = negative ? `${entry.amount}` : `+${entry.amount}`;
                 this._spawnLabel({ col: entry.col, row: entry.row,
-                                   resource: entry.resource, label: `+${entry.amount}` });
+                                   resource: entry.resource, label, yOffset: idx * 17, negative });
             }
         });
 
@@ -39,7 +44,7 @@ export class FloatingLabels {
         });
     }
 
-    _spawnLabel({ col, row, resource, label, yOffset = 0 }) {
+    _spawnLabel({ col, row, resource, label, yOffset = 0, negative = false }) {
         const tile     = this._scene.tileMap?.getTile(col, row);
         const h        = tile ? tile.height : 0;
         const { x, y } = tileToWorld(col, row, h);
@@ -52,10 +57,11 @@ export class FloatingLabels {
         const icon = this._scene.add.image(-(ICON_SIZE / 2 + ICON_GAP), 0, `icon-${resource}`)
             .setOrigin(0.5, 0.5);
 
+        const color = negative ? '#ff4444' : (RESOURCE_COLORS[resource] ?? '#ffffff');
         const text = this._scene.add.text(ICON_GAP, 0, label, {
             fontFamily:      'monospace',
             fontSize:        '14px',
-            color:           RESOURCE_COLORS[resource] ?? '#ffffff',
+            color,
             stroke:          '#000000',
             strokeThickness: 3,
         }).setOrigin(0, 0.5);

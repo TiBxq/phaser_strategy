@@ -66,6 +66,17 @@ export class ProductionSystem {
                 if (building.ironTiles.length === 0) continue;
             }
 
+            // Market: each merchant converts 3 food → 5 money. Gate on available food.
+            if (building.configId === 'MARKET') {
+                const availableFood = this.resourceSystem.get('food');
+                effectiveWorkers = Math.min(assigned, Math.floor(availableFood / 3));
+                if (effectiveWorkers <= 0) continue;
+                const foodCost = effectiveWorkers * 3;
+                this.resourceSystem.spend({ food: foodCost });
+                yields.push({ uid: building.uid, col: building.col, row: building.row,
+                              resource: 'food', amount: -foodCost });
+            }
+
             // Smithy: 5-cycle production — 1 worker + 10 iron → 1 weapon
             if (building.configId === 'SMITHY') {
                 if (building._smithyProgress < 5) building._smithyProgress++;
@@ -100,14 +111,7 @@ export class ProductionSystem {
         const totalVillagers = this.villagerManager.total;
         const consumed = { food: 0 };
         if (totalVillagers > 0) {
-            let cost = totalVillagers * FOOD_COST_PER_VILLAGER;
-
-            // Market merchants consume an additional 3 food each
-            for (const building of this.buildSystem.placedBuildings.values()) {
-                if (building.configId === 'MARKET' && building.assignedVillagers > 0) {
-                    cost += building.assignedVillagers * 3;
-                }
-            }
+            const cost = totalVillagers * FOOD_COST_PER_VILLAGER;
 
             const food      = this.resourceSystem.get('food');
             const toConsume = Math.min(cost, food);
