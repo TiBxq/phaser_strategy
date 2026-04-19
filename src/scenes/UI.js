@@ -9,6 +9,7 @@ import { HungerAlert } from '../ui/HungerAlert.js';
 import { BanditAlert } from '../ui/BanditAlert.js';
 import { FOG_VISIBLE } from '../systems/FogOfWarSystem.js';
 import { QuestPanel } from '../ui/QuestPanel.js';
+import { ComingSoonScreen } from '../ui/ComingSoonScreen.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
@@ -29,7 +30,8 @@ export class UI extends Phaser.Scene {
         this.villagerPanel = new VillagerPanel(this, gameScene.buildSystem, gameScene.villagerManager);
         this.hungerAlert   = new HungerAlert(this);
         this.banditAlert   = new BanditAlert(this);
-        this.questPanel    = new QuestPanel(this, gameScene.questSystem);
+        this.questPanel       = new QuestPanel(this, gameScene.questSystem);
+        this.comingSoonScreen = new ComingSoonScreen(this);
 
         // Wire villager assignment events to VillagerManager
         GameEvents.on(EventNames.VILLAGER_ASSIGN_REQUEST, ({ buildingUid, count }) => {

@@ -49,8 +49,9 @@ export const QUESTS = Object.freeze([
         id: 'PREPARE_FOR_JOURNEY',
         label: 'Prepare for the Journey',
         tasks: Object.freeze([
-            { id: 'reach_population', label: 'Reach 30 population', type: 'populationReached', count: 30  },
-            { id: 'collect_gold',     label: 'Collect 300 gold',    type: 'goldCollected',     amount: 300 },
+            { id: 'build_warehouse',  label: 'Build a Warehouse',   type: 'buildingPlaced',    configId: 'WAREHOUSE' },
+            { id: 'reach_population', label: 'Reach 30 population', type: 'populationReached', count: 30             },
+            { id: 'collect_gold',     label: 'Collect 300 gold',    type: 'goldCollected',     amount: 300           },
         ]),
     },
     {
