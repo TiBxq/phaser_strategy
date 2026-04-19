@@ -7,9 +7,10 @@ export class QuestSystem {
      * @param {import('./BuildSystem.js').BuildSystem} buildSystem
      * @param {import('./VillagerManager.js').VillagerManager} villagerManager
      */
-    constructor(buildSystem, villagerManager) {
+    constructor(buildSystem, villagerManager, resourceSystem) {
         this._buildSystem     = buildSystem;
         this._villagerManager = villagerManager;
+        this._resourceSystem  = resourceSystem;
 
         /** Index into QUESTS for the active quest. */
         this._questIndex = 0;
@@ -30,6 +31,12 @@ export class QuestSystem {
         GameEvents.on(EventNames.WARRIORS_CHANGED,
             () => this._onWarriorsChanged());
 
+        GameEvents.on(EventNames.BANDIT_CAMP_CLEARED,
+            () => this._onCampCleared());
+
+        GameEvents.on(EventNames.RESOURCES_CHANGED,
+            () => this._onResourcesChanged());
+
         // Begin the first quest
         this._startQuest(0);
     }
@@ -49,6 +56,20 @@ export class QuestSystem {
     /** True when the player has reached the terminal "Enjoy the Game!" quest. */
     isComplete() {
         return this.currentQuest.id === 'ENJOY';
+    }
+
+    /**
+     * Returns { current, target } for tasks that have a numeric progress indicator,
+     * or null for tasks that are simply done/not-done.
+     */
+    getTaskProgress(taskId) {
+        const task = this.currentQuest.tasks.find(t => t.id === taskId);
+        if (!task) return null;
+        if (task.type === 'populationReached')
+            return { current: this._villagerManager.total, target: task.count };
+        if (task.type === 'goldCollected')
+            return { current: this._resourceSystem.get('money'), target: task.amount };
+        return null;
     }
 
     // ─── Internal ──────────────────────────────────────────────────────────────
@@ -117,8 +138,25 @@ export class QuestSystem {
         for (const building of this._buildSystem.placedBuildings.values()) {
             if (building.assignedVillagers >= 1) {
                 this._completeTask('assign_worker');
-                return;
+                break;
             }
+        }
+
+        const popTask = this.currentQuest.tasks.find(t => t.type === 'populationReached');
+        if (popTask && this._villagerManager.total >= popTask.count) {
+            this._completeTask(popTask.id);
+        }
+    }
+
+    _onCampCleared() {
+        const task = this.currentQuest.tasks.find(t => t.type === 'campCleared');
+        if (task) this._completeTask(task.id);
+    }
+
+    _onResourcesChanged() {
+        const task = this.currentQuest.tasks.find(t => t.type === 'goldCollected');
+        if (task && this._resourceSystem.get('money') >= task.amount) {
+            this._completeTask(task.id);
         }
     }
 

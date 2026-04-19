@@ -65,6 +65,8 @@ export class QuestPanel {
         GameEvents.on(EventNames.QUEST_STARTED,        () => this._redraw());
         GameEvents.on(EventNames.QUEST_TASK_COMPLETED, () => this._redraw());
         GameEvents.on(EventNames.QUEST_COMPLETED,      () => this._redraw());
+        GameEvents.on(EventNames.RESOURCES_CHANGED,    () => this._redraw());
+        GameEvents.on(EventNames.VILLAGERS_CHANGED,    () => this._redraw());
 
         this._redraw();
     }
@@ -106,7 +108,9 @@ export class QuestPanel {
 
             for (const task of quest.tasks) {
                 const done  = this._questSystem.isTaskDone(task.id);
-                const label = (done ? '\u2713 ' : '\u25cb ') + task.label;
+                const prog  = !done ? this._questSystem.getTaskProgress(task.id) : null;
+                const label = (done ? '\u2713 ' : '\u25cb ') + task.label
+                            + (prog ? ` (${prog.current}/${prog.target})` : '');
                 const style = done ? STYLE_TASK_DONE : STYLE_TASK_PENDING;
                 const t     = this._addText(x0, curY, label, style);
                 curY += Math.max(t.height, LINE_H) + 2;

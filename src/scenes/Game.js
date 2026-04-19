@@ -51,7 +51,7 @@ export class Game extends Phaser.Scene {
             this.resourceSystem, this.buildSystem, this.villagerManager);
         this.productionSystem.hungerSystem = this.hungerSystem;
 
-        this.questSystem = new QuestSystem(this.buildSystem, this.villagerManager);
+        this.questSystem = new QuestSystem(this.buildSystem, this.villagerManager, this.resourceSystem);
 
         this.banditCampSystem = new BanditCampSystem();
         this.banditCampSystem.initFromMap(this.tileMap);
