@@ -113,11 +113,11 @@ export class ComingSoonScreen {
             }
         }
 
-        // Buildings on back tiles (scale 0.5, origin bottom-centre)
+        // Buildings: triangle layout — townhall back-center, farm right, barracks left
         const buildings = [
             { col: 0, row: 0, key: 'building-townhall' },
-            { col: 2, row: 0, key: 'building-barracks'  },
             { col: 1, row: 0, key: 'building-farm'      },
+            { col: 0, row: 1, key: 'building-barracks'  },
         ];
         for (const { col, row, key } of buildings) {
             const tx = cx + (col - row) * HW;
@@ -129,11 +129,11 @@ export class ComingSoonScreen {
                 .setScale(0.5));
         }
 
-        // Characters in the foreground rows (scaled up 2.5× for visibility)
+        // Characters in foreground — evenly spread, 2× scale (integer = crisp pixel art)
         const chars = [
             { col: 0, row: 2, key: 'sprite-villager' },
             { col: 1, row: 1, key: 'sprite-warrior'  },
-            { col: 2, row: 2, key: 'sprite-bandit'   },
+            { col: 2, row: 1, key: 'sprite-bandit'   },
         ];
         for (const { col, row, key } of chars) {
             const tx = cx + (col - row) * HW;
@@ -142,7 +142,7 @@ export class ComingSoonScreen {
                 .setScrollFactor(0)
                 .setDepth(DEPTH + 2.5 + (col + row) * 0.01)
                 .setOrigin(0.5, 1)
-                .setScale(2.5));
+                .setScale(2));
         }
     }
 
