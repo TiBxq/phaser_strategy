@@ -428,6 +428,22 @@ export class Preloader extends Phaser.Scene {
         dctx.arc(DOT / 2, DOT / 2, DOT / 2, 0, Math.PI * 2);
         dctx.fill();
         dot.refresh();
+
+        // Elongated chip — stone/wood splinter, tapered ends, fat enough to survive rotation
+        const CW = 16, CH = 6;
+        const chip = this.textures.createCanvas('particle-chip', CW, CH);
+        const cctx = chip.getContext();
+        cctx.fillStyle = 'rgba(255,255,255,1)';
+        cctx.beginPath();
+        cctx.moveTo(0,        CH / 2);
+        cctx.lineTo(CW * 0.2, 0);
+        cctx.lineTo(CW * 0.8, 0);
+        cctx.lineTo(CW,       CH / 2);
+        cctx.lineTo(CW * 0.8, CH);
+        cctx.lineTo(CW * 0.2, CH);
+        cctx.closePath();
+        cctx.fill();
+        chip.refresh();
     }
 
     _generateUITextures() {

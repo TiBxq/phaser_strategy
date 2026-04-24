@@ -132,10 +132,18 @@ export class BuildingRenderer {
 
         const img = this.scene.add.image(x, y, config.textureKey)
             .setOrigin(0.5, 1)
-            .setDepth(depth);
+            .setDepth(depth)
+            .setAlpha(0);
 
         this._buildingSprites.set(building.uid, img);
+        if (this._ghost) this._ghost.setVisible(false);
+        this._clearGhostTiles();
         this._spawnPlacementEffect(x, y, depth);
+
+        // Building emerges from the dust cloud
+        this.scene.time.delayedCall(180, () => {
+            this.scene.tweens.add({ targets: img, alpha: 1, duration: 180, ease: 'quad.out' });
+        });
         this.scene.sound.play('sfx-build', { volume: 0.7 });
 
         // Farm fields: 4 individual tile sprites per 2×2 block
@@ -147,75 +155,153 @@ export class BuildingRenderer {
     }
 
     _spawnPlacementEffect(x, y, buildingDepth) {
-        const depth = buildingDepth + 0.5;
+        const depth = buildingDepth + 10;
 
-        // Big dust puffs
-        const puffs = this.scene.add.particles(x, y - 20, 'particle-dust', {
-            emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, 38) },
-            angle:    { min: 190, max: 350 },
-            speed:    { min: 60, max: 150 },
-            gravityY: 50,
-            scale:    { start: 2.2, end: 0 },
-            alpha:    { start: 0.85, end: 0 },
-            lifespan: { min: 650, max: 1100 },
-            tint:     [0xfff0cc, 0xffeebb, 0xeeddaa, 0xffffff],
-            quantity: 22,
-            stopAfter: 22,
+        // Dust cloud — four emitters at distinct positions, small enough to stay separate
+        // Small end scale keeps individual puffs readable rather than merging into one blob
+        const dustShared = {
+            speed:    { min: 16, max: 42 },
+            gravityY: -8,
+            alpha:    { start: 0.82, end: 0, ease: 'quad.in' },
+            tint:     [0xbcac94, 0xac9c84, 0xccbca4, 0xd0c0a8],
+        };
+
+        // Two low base puffs spreading outward from the sides
+        const dustL = this.scene.add.particles(x - 30, y - 10, 'particle-dust', {
+            ...dustShared,
+            angle:    { min: 225, max: 265 },
+            scale:    { start: 0.9, end: 2.0, ease: 'sine.out' },
+            lifespan: { min: 500, max: 780 },
+            quantity: 4, stopAfter: 4,
         });
-        puffs.setDepth(depth);
-        this.scene.time.delayedCall(1300, () => puffs.destroy());
+        dustL.setDepth(depth);
 
-        // Dense opaque debris specks
-        const specks = this.scene.add.particles(x, y - 16, 'particle-dot', {
-            emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, 32) },
-            angle:    { min: 150, max: 390 },
-            speed:    { min: 80, max: 220 },
-            gravityY: 220,
-            scale:    { start: 2.8, end: 0.4 },
+        const dustR = this.scene.add.particles(x + 26, y - 10, 'particle-dust', {
+            ...dustShared,
+            angle:    { min: 275, max: 315 },
+            scale:    { start: 0.9, end: 2.0, ease: 'sine.out' },
+            lifespan: { min: 500, max: 780 },
+            delay:    { min: 40, max: 90 },
+            quantity: 4, stopAfter: 4,
+        });
+        dustR.setDepth(depth);
+
+        // Two taller central puffs rising above the building
+        const dustC1 = this.scene.add.particles(x - 8, y - 22, 'particle-dust', {
+            ...dustShared,
+            angle:    { min: 255, max: 280 },
+            scale:    { start: 1.0, end: 2.4, ease: 'sine.out' },
+            lifespan: { min: 620, max: 950 },
+            delay:    { min: 30, max: 80 },
+            quantity: 5, stopAfter: 5,
+        });
+        dustC1.setDepth(depth);
+
+        const dustC2 = this.scene.add.particles(x + 10, y - 26, 'particle-dust', {
+            ...dustShared,
+            angle:    { min: 260, max: 285 },
+            scale:    { start: 1.0, end: 2.2, ease: 'sine.out' },
+            lifespan: { min: 580, max: 900 },
+            delay:    { min: 70, max: 140 },
+            quantity: 4, stopAfter: 4,
+        });
+        dustC2.setDepth(depth);
+
+        this.scene.time.delayedCall(1200, () => {
+            dustL.destroy(); dustR.destroy(); dustC1.destroy(); dustC2.destroy();
+        });
+
+        // Debris chips — upward arc, tumble, fall fast
+        // NOTE: avoid random:true on scale — it picks start between 0..max, making most chips invisible
+        const chips = this.scene.add.particles(x, y - 18, 'particle-chip', {
+            emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, 18) },
+            angle:    { min: 220, max: 320 },
+            speed:    { min: 90, max: 190 },
+            gravityY: 430,
+            scaleX:   { start: 1.4, end: 0.2 },
+            scaleY:   { start: 0.7, end: 0.2 },
             alpha:    { start: 1.0, end: 0 },
-            lifespan: { min: 400, max: 750 },
-            tint:     [0xddbb88, 0xccaa77, 0xeeccaa, 0xbbaa88, 0xaa9966, 0xffd9a0],
-            quantity: 60,
-            stopAfter: 60,
+            rotate:   { min: 0, max: 360 },
+            lifespan: { min: 300, max: 520 },
+            tint:     [0x5a4532, 0x6b5540, 0x4a3828, 0x7a6248, 0x3e2e1e],
+            quantity: 24,
+            stopAfter: 24,
         });
-        specks.setDepth(depth);
-        this.scene.time.delayedCall(950, () => specks.destroy());
+        chips.setDepth(depth);
+        this.scene.time.delayedCall(700, () => chips.destroy());
     }
 
     _spawnDemolitionEffect(x, y, buildingDepth) {
-        const depth = buildingDepth + 0.5;
+        const depth = buildingDepth + 10;
 
-        // Big billowing dust cloud
-        const dust = this.scene.add.particles(x, y - 36, 'particle-dust', {
-            emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, 42) },
-            angle:    { min: 180, max: 360 },
-            speed:    { min: 40, max: 100 },
-            gravityY: 8,
-            scale:    { start: 2.6, end: 0 },
-            alpha:    { start: 0.85, end: 0 },
-            lifespan: { min: 900, max: 1500 },
-            tint:     [0xdddddd, 0xcccccc, 0xeeeeee, 0xffffff],
-            quantity: 22,
-            stopAfter: 22,
+        // Collapse dust — grayer than construction, wider spread, lingers longer
+        const demoShared = {
+            speed:    { min: 18, max: 50 },
+            gravityY: -6,
+            alpha:    { start: 0.88, end: 0, ease: 'quad.in' },
+            tint:     [0xb0a898, 0xa09888, 0xc0b8a8, 0xd0c8b8],
+        };
+
+        const demoL = this.scene.add.particles(x - 36, y - 10, 'particle-dust', {
+            ...demoShared,
+            angle:    { min: 220, max: 265 },
+            scale:    { start: 1.0, end: 2.4, ease: 'sine.out' },
+            lifespan: { min: 650, max: 1000 },
+            quantity: 5, stopAfter: 5,
         });
-        dust.setDepth(depth);
-        this.scene.time.delayedCall(1800, () => dust.destroy());
+        demoL.setDepth(depth);
 
-        // Massive spray of opaque debris specks
-        const specks = this.scene.add.particles(x, y - 18, 'particle-dot', {
-            emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, 30) },
-            angle:    { min: 130, max: 410 },
-            speed:    { min: 120, max: 280 },
-            gravityY: 320,
-            scale:    { start: 3.2, end: 0.2 },
+        const demoR = this.scene.add.particles(x + 30, y - 10, 'particle-dust', {
+            ...demoShared,
+            angle:    { min: 275, max: 320 },
+            scale:    { start: 1.0, end: 2.4, ease: 'sine.out' },
+            lifespan: { min: 650, max: 1000 },
+            delay:    { min: 30, max: 70 },
+            quantity: 5, stopAfter: 5,
+        });
+        demoR.setDepth(depth);
+
+        const demoC1 = this.scene.add.particles(x - 10, y - 26, 'particle-dust', {
+            ...demoShared,
+            angle:    { min: 253, max: 278 },
+            scale:    { start: 1.1, end: 2.8, ease: 'sine.out' },
+            lifespan: { min: 800, max: 1300 },
+            delay:    { min: 20, max: 60 },
+            quantity: 6, stopAfter: 6,
+        });
+        demoC1.setDepth(depth);
+
+        const demoC2 = this.scene.add.particles(x + 12, y - 30, 'particle-dust', {
+            ...demoShared,
+            angle:    { min: 258, max: 282 },
+            scale:    { start: 1.1, end: 2.6, ease: 'sine.out' },
+            lifespan: { min: 750, max: 1200 },
+            delay:    { min: 60, max: 130 },
+            quantity: 5, stopAfter: 5,
+        });
+        demoC2.setDepth(depth);
+
+        this.scene.time.delayedCall(1600, () => {
+            demoL.destroy(); demoR.destroy(); demoC1.destroy(); demoC2.destroy();
+        });
+
+        // Debris chips — collapse flies in all directions, not just upward
+        const demoChips = this.scene.add.particles(x, y - 20, 'particle-chip', {
+            emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, 22) },
+            angle:    { min: 160, max: 380 },
+            speed:    { min: 110, max: 240 },
+            gravityY: 460,
+            scaleX:   { start: 1.6, end: 0.2 },
+            scaleY:   { start: 0.8, end: 0.2 },
             alpha:    { start: 1.0, end: 0 },
-            lifespan: { min: 450, max: 800 },
-            tint:     [0x999988, 0x888877, 0xaaaaaa, 0x776655, 0xbbbbaa, 0x554433],
-            quantity: 70,
-            stopAfter: 70,
+            rotate:   { min: 0, max: 360 },
+            lifespan: { min: 320, max: 580 },
+            tint:     [0x6a5a48, 0x7a6a55, 0x58483a, 0x888070, 0x4a3c2e],
+            quantity: 36,
+            stopAfter: 36,
         });
-        specks.setDepth(depth);
-        this.scene.time.delayedCall(1000, () => specks.destroy());
+        demoChips.setDepth(depth);
+        this.scene.time.delayedCall(750, () => demoChips.destroy());
     }
 
     _addFieldSprite(col, row) {
