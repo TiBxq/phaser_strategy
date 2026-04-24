@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { TILE_W, TILE_H, TILE_DEPTH, HEIGHT_STEP } from './map/MapRenderer.js';
 import { MAX_TILE_HEIGHT } from './map/TileMap.js';
 

@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { ResourceBar } from '../ui/ResourceBar.js';
 import { BuildingMenu } from '../ui/BuildingMenu.js';
 import { TileInfoPanel } from '../ui/TileInfoPanel.js';

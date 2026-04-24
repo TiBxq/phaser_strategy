@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { TILE_TYPES } from '../data/TileTypes.js';
 import { MAP_SIZE } from './TileMap.js';
 import { GameEvents } from '../events/GameEvents.js';

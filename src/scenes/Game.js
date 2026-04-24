@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { TileMap } from '../map/TileMap.js';
 import { MapRenderer, worldToTile, ORIGIN_X, ORIGIN_Y, TILE_W, TILE_H } from '../map/MapRenderer.js';
 import { BuildingRenderer } from '../map/BuildingRenderer.js';

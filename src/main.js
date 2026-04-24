@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { Preloader } from './Preloader.js';
 import { Menu } from './scenes/Menu.js';
 import { Game } from './scenes/Game.js';
@@ -12,6 +12,7 @@ const config = {
     parent: 'game-container',
     backgroundColor: '#0a0a1a',
     pixelArt: true,
+    roundPixels: true,
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,

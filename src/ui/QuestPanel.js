@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 

@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { tileToWorld, TILE_DEPTH, TILE_H } from './MapRenderer.js';
 import { GameEvents } from '../events/GameEvents.js';

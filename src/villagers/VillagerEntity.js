@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { tileToWorld, TILE_H } from '../map/MapRenderer.js';
 import { aStar } from '../pathfinding/AStar.js';
 import { isWalkable, randomWalkableTile, heightMoveCost } from './walkable.js';
