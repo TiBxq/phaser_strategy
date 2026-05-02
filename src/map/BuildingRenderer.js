@@ -4,10 +4,13 @@ import { tileToWorld, TILE_DEPTH, TILE_H } from './MapRenderer.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 import {
-    LAYER_FIELD, LAYER_WORKER, LAYER_BUILDING, LAYER_GHOST_TILE,
+    LAYER_FIELD, LAYER_WORKER, LAYER_WORKER_SHADOW, LAYER_BUILDING, LAYER_GHOST_TILE,
     DEPTH_GHOST_BUILDING, DEPTH_SELECTION_OVERLAY, HEIGHT_DEPTH_BIAS,
     DEPTH_FLOATING_LABEL,
 } from '../config/DepthLayers.js';
+
+const SOLDIER_SCALE    = 1.0;
+const SOLDIER_Y_ADJUST = 34;  // transparent pixels below character feet in the 100×100 frame
 
 // 2×2 footprint offsets
 const FOOTPRINT = [[0, 0], [1, 0], [0, 1], [1, 1]];
@@ -22,8 +25,12 @@ export class BuildingRenderer {
         this._buildingSprites = new Map();
         // Map<'col_row', Phaser.GameObjects.Image> for farm fields
         this._fieldSprites = new Map();
-        // Map<'col_row', Phaser.GameObjects.Image> for worker overlays
+        // Map<'col_row', Phaser.GameObjects.Sprite> for worker sprites
         this._workerSprites = new Map();
+        // Map<'col_row', Phaser.GameObjects.Image> for worker shadows
+        this._workerShadows = new Map();
+        // Map<'col_row', Phaser.Time.TimerEvent> for worker attack scheduling
+        this._workerTimers = new Map();
         // Map<uid, Phaser.GameObjects.Image> for "no road connection" warning icons
         this._noRoadSprites = new Map();
         // Map<uid, Phaser.GameObjects.Image> for starvation departure warning icons
@@ -353,9 +360,29 @@ export class BuildingRenderer {
 
     // ─── Worker tiles ──────────────────────────────────────────────────────────
 
+    _scheduleWorkerAction(key, sprite, animKey) {
+        const timer = this.scene.time.delayedCall(
+            Phaser.Math.Between(1000, 3000),
+            () => {
+                if (!sprite.active) return;
+                sprite.play(animKey);
+                sprite.once('animationcomplete', () => {
+                    if (!sprite.active) return;
+                    sprite.play('soldier-idle');
+                    this._scheduleWorkerAction(key, sprite, animKey);
+                });
+            },
+        );
+        this._workerTimers.set(key, timer);
+    }
+
     _updateWorkerTiles() {
-        for (const sprite of this._workerSprites.values()) sprite.destroy();
+        for (const t of this._workerTimers.values()) t.remove();
+        for (const s of this._workerSprites.values()) s.destroy();
+        for (const s of this._workerShadows.values()) s.destroy();
+        this._workerTimers.clear();
         this._workerSprites.clear();
+        this._workerShadows.clear();
 
         if (!this._buildSystem) return;
 
@@ -363,11 +390,11 @@ export class BuildingRenderer {
             const config = BUILDING_CONFIGS[building.configId];
             if (!config.claimsTileType) continue;
 
-            // Farm: worker on the anchor tile of each claimed field block
-            // Lumbermill: worker on the first N forest tiles (sorted closest-first)
-            const workerTiles = config.claimsTileType === 'FOREST'
+            const isForest  = config.claimsTileType === 'FOREST';
+            const animKey   = isForest ? 'soldier-attack01' : 'soldier-attack02';
+            const workerTiles = isForest
                 ? building.forestTiles
-                : building.fieldTiles.map(b => b);  // block anchors serve as worker tile
+                : building.fieldTiles.map(b => b);
 
             const workerCount = building.assignedVillagers;
             for (let i = 0; i < workerCount && i < workerTiles.length; i++) {
@@ -375,13 +402,25 @@ export class BuildingRenderer {
                 const key          = `${col}_${row}`;
                 if (this._workerSprites.has(key)) continue;
 
-                const wTile    = this.tileMap.getTile(col, row);
-                const wH       = wTile ? wTile.height : 0;
-                const { x, y } = tileToWorld(col, row, wH);
-                const sprite   = this.scene.add.image(x, y, 'tile-worker-overlay')
+                const wTile     = this.tileMap.getTile(col, row);
+                const wH        = wTile ? wTile.height : 0;
+                const { x, y }  = tileToWorld(col, row, wH);
+                const baseDepth = col + row + wH * HEIGHT_DEPTH_BIAS;
+                const spriteY   = y - TILE_H + SOLDIER_Y_ADJUST;
+
+                const shadow = this.scene.add.image(x, spriteY, 'soldier-shadow')
                     .setOrigin(0.5, 1)
-                    .setDepth(col + row + wH * HEIGHT_DEPTH_BIAS + LAYER_WORKER);
+                    .setScale(SOLDIER_SCALE)
+                    .setDepth(baseDepth + LAYER_WORKER_SHADOW);
+                this._workerShadows.set(key, shadow);
+
+                const sprite = this.scene.add.sprite(x, spriteY, 'soldier-idle', 0)
+                    .setOrigin(0.5, 1)
+                    .setScale(SOLDIER_SCALE)
+                    .setDepth(baseDepth + LAYER_WORKER);
+                sprite.play('soldier-idle');
                 this._workerSprites.set(key, sprite);
+                this._scheduleWorkerAction(key, sprite, animKey);
             }
         }
     }

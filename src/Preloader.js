@@ -31,6 +31,13 @@ export class Preloader extends Phaser.Scene {
         // UI icon spritesheet (16×16 frames)
         this.load.image('icons-sheet', 'assets/ui/icons/items_sheet.png');
 
+        // Character spritesheets and shadow
+        this.load.spritesheet('soldier-walk',     'assets/characters/Soldier-Walk.png',     { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('soldier-idle',     'assets/characters/Soldier-Idle.png',     { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('soldier-attack01', 'assets/characters/Soldier-Attack01.png', { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('soldier-attack02', 'assets/characters/Soldier-Attack02.png', { frameWidth: 100, frameHeight: 100 });
+        this.load.image('soldier-shadow', 'assets/characters/Soldier-Shadow.png');
+
         // Music
         this.load.audio('music-ambient', 'assets/music/Ambient.wav');
 
@@ -52,6 +59,32 @@ export class Preloader extends Phaser.Scene {
         this._generateDepletedIcon();
         this._generateIconTextures();
         this._generateParticleTextures();
+
+        this.anims.create({
+            key: 'soldier-walk',
+            frames: this.anims.generateFrameNumbers('soldier-walk', { start: 0, end: 7 }),
+            frameRate: 10,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: 'soldier-idle',
+            frames: this.anims.generateFrameNumbers('soldier-idle', { start: 0, end: 5 }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: 'soldier-attack01',
+            frames: this.anims.generateFrameNumbers('soldier-attack01', { start: 0, end: 5 }),
+            frameRate: 8,
+            repeat: 0,
+        });
+        this.anims.create({
+            key: 'soldier-attack02',
+            frames: this.anims.generateFrameNumbers('soldier-attack02', { start: 0, end: 5 }),
+            frameRate: 8,
+            repeat: 0,
+        });
+
         this.scene.start('Menu');
     }
 
@@ -461,7 +494,6 @@ export class Preloader extends Phaser.Scene {
         this._makeButton('btn-small-hover',  28, 24, 0x446688, 0x5588aa);
 
         this._makeVillagerIcon('icon-villager');
-        this._makeVillagerSprite('sprite-villager');
         this._makeWarriorSprite('sprite-warrior');
         this._makeBanditSprite('sprite-bandit');
     }
@@ -493,22 +525,6 @@ export class Preloader extends Phaser.Scene {
         g.fillStyle(0x4466aa, 1);
         g.fillRect(4, 9, 8, 7);
         g.generateTexture(key, 16, 20);
-        g.destroy();
-    }
-
-    _makeVillagerSprite(key) {
-        const g = this.make.graphics({ x: 0, y: 0, add: false });
-        // Head
-        g.fillStyle(0xffcc88, 1);
-        g.fillCircle(5, 3, 3);
-        // Body / shirt
-        g.fillStyle(0x4466aa, 1);
-        g.fillRect(2, 6, 6, 5);
-        // Outline
-        g.lineStyle(1, 0x000000, 0.4);
-        g.strokeCircle(5, 3, 3);
-        g.strokeRect(2, 6, 6, 5);
-        g.generateTexture(key, 10, 14);
         g.destroy();
     }
 
