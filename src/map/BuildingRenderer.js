@@ -405,8 +405,8 @@ export class BuildingRenderer {
                 const wTile     = this.tileMap.getTile(col, row);
                 const wH        = wTile ? wTile.height : 0;
                 const { x, y }  = tileToWorld(col, row, wH);
-                const baseDepth = col + row + wH * HEIGHT_DEPTH_BIAS;
-                const spriteY   = y - TILE_H + SOLDIER_Y_ADJUST;
+                const baseDepth   = col + row + wH * HEIGHT_DEPTH_BIAS;
+                const spriteY     = y - TILE_H + SOLDIER_Y_ADJUST + (isForest ? 0 : 12);
 
                 const shadow = this.scene.add.image(x, spriteY, 'soldier-shadow')
                     .setOrigin(0.5, 1)

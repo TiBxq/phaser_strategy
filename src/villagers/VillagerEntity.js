@@ -132,6 +132,9 @@ export class VillagerEntity {
             onComplete: () => {
                 this.col = next.col;
                 this.row = next.row;
+                if (this._fogSystem) {
+                    this._fogSystem.revealAround(this.col, this.row, 1);
+                }
                 this._sprite.setDepth(dstDepth);
                 this._shadow.setDepth(dstDepth - (LAYER_VILLAGER - LAYER_SHADOW));
                 this._pathStep++;
