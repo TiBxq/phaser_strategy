@@ -130,4 +130,10 @@ export const EventNames = Object.freeze({
 
     // VillagerManager forcibly unassigned a worker from a building (e.g. starvation) — payload: { buildingUid }
     WORKER_FORCE_RECALLED: 'worker:force_recalled',
+
+    // Request WarriorRenderer to march one warrior from a Barracks home — payload: { buildingUid }
+    WARRIOR_RECALL_REQUEST: 'warrior:recall_request',
+
+    // WarriorRenderer signals that a recalled warrior has arrived home — payload: { buildingUid }
+    WARRIOR_RECALLED: 'warrior:recalled',
 });

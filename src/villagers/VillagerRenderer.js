@@ -14,6 +14,7 @@ export class VillagerRenderer {
         this._free       = [];   // VillagerEntity[] — wandering
         this._marchingTo = new Map(); // buildingUid → VillagerEntity[]
         this._stationed  = new Map(); // buildingUid → VillagerEntity[]
+        this._recalling  = new Map(); // buildingUid → VillagerEntity[] (waiting for warrior to march home)
 
         GameEvents.on(EventNames.VILLAGERS_CHANGED, ({ total }) => {
             this._syncCount(total);
@@ -34,6 +35,16 @@ export class VillagerRenderer {
         GameEvents.on(EventNames.BUILDING_REMOVED, ({ uid }) => {
             this._onBuildingRemoved(uid);
         });
+
+        GameEvents.on(EventNames.WARRIOR_RECALLED, ({ buildingUid }) => {
+            const recalling = this._recalling.get(buildingUid);
+            if (recalling && recalling.length > 0) {
+                const entity = recalling.pop();
+                const building = this._buildSystem.getBuilding(buildingUid);
+                this._makeEntityFree(entity, building);
+                this._villagerManager.unassign(buildingUid, 1, this._buildSystem);
+            }
+        });
     }
 
     // ── Entity count sync ─────────────────────────────────────────────────────
@@ -42,6 +53,7 @@ export class VillagerRenderer {
         let n = this._free.length;
         for (const arr of this._marchingTo.values()) n += arr.length;
         for (const arr of this._stationed.values())  n += arr.length;
+        for (const arr of this._recalling.values())  n += arr.length;
         return n;
     }
 
@@ -97,6 +109,12 @@ export class VillagerRenderer {
 
             // Production starts now
             this._villagerManager.confirmWorker(buildingUid, this._buildSystem);
+
+            // Notify warrior renderer if this is a Barracks
+            const b = this._buildSystem.getBuilding(buildingUid);
+            if (b?.configId === 'BARRACKS') {
+                GameEvents.emit(EventNames.WARRIORS_CHANGED, { buildingUid, building: b });
+            }
         });
     }
 
@@ -104,17 +122,26 @@ export class VillagerRenderer {
 
     _recallWorker(buildingUid) {
         const building = this._buildSystem.getBuilding(buildingUid);
+        const isBarracks = building?.configId === 'BARRACKS';
 
         // Prefer recalling a stationed entity (already arrived)
         const stationed = this._stationed.get(buildingUid);
         if (stationed && stationed.length > 0) {
             const entity = stationed.pop();
-            this._makeEntityFree(entity, building);
-            this._villagerManager.unassign(buildingUid, 1, this._buildSystem);
+            if (isBarracks) {
+                // Hold entity in recalling bucket until the warrior marches home
+                const recalling = this._recalling.get(buildingUid) ?? [];
+                recalling.push(entity);
+                this._recalling.set(buildingUid, recalling);
+                GameEvents.emit(EventNames.WARRIOR_RECALL_REQUEST, { buildingUid });
+            } else {
+                this._makeEntityFree(entity, building);
+                this._villagerManager.unassign(buildingUid, 1, this._buildSystem);
+            }
             return;
         }
 
-        // Fall back to cancelling an in-transit entity
+        // Fall back to cancelling an in-transit entity (no warrior spawned yet)
         const marching = this._marchingTo.get(buildingUid);
         if (marching && marching.length > 0) {
             const entity = marching.pop();
@@ -129,6 +156,10 @@ export class VillagerRenderer {
         const stationed = this._stationed.get(buildingUid);
         if (stationed && stationed.length > 0) {
             stationed.pop().destroy();
+            const b = this._buildSystem.getBuilding(buildingUid);
+            if (b?.configId === 'BARRACKS') {
+                GameEvents.emit(EventNames.WARRIORS_CHANGED, { buildingUid, building: b });
+            }
             return;
         }
         // Worker may still be marching — cancel and destroy it
@@ -162,6 +193,15 @@ export class VillagerRenderer {
             this._free.push(entity);
         }
         this._stationed.delete(buildingUid);
+
+        // Release any entities waiting for a warrior to march home
+        const recalling = this._recalling.get(buildingUid) ?? [];
+        for (const entity of recalling) {
+            entity.setVisible(true);
+            entity.resumeWander();
+            this._free.push(entity);
+        }
+        this._recalling.delete(buildingUid);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

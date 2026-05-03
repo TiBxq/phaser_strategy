@@ -37,32 +37,23 @@ export class UI extends Phaser.Scene {
         GameEvents.on(EventNames.VILLAGER_ASSIGN_REQUEST, ({ buildingUid, count }) => {
             const building = gameScene.buildSystem.getBuilding(buildingUid);
             if (building?.configId === 'BARRACKS') {
-                // Barracks: instant assign, costs 1 weapon per warrior
+                // Barracks: costs 1 weapon per warrior, then dispatch a villager to march there
                 if (!gameScene.resourceSystem.canAfford({ weapons: count })) {
                     GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: 'Not enough weapons to train warrior.' });
                     return;
                 }
                 gameScene.resourceSystem.spend({ weapons: count });
-                gameScene.villagerManager.assign(buildingUid, count, gameScene.buildSystem);
-                GameEvents.emit(EventNames.WARRIORS_CHANGED, { buildingUid, building });
-            } else {
-                // Production buildings: dispatch a free villager to march to the building
-                const reserved = gameScene.villagerManager.reserveWorker(buildingUid, gameScene.buildSystem);
-                if (reserved) {
-                    GameEvents.emit(EventNames.WORKER_DISPATCH_REQUEST, { buildingUid });
-                }
+            }
+            // All buildings: dispatch a free villager to march to the building
+            const reserved = gameScene.villagerManager.reserveWorker(buildingUid, gameScene.buildSystem);
+            if (reserved) {
+                GameEvents.emit(EventNames.WORKER_DISPATCH_REQUEST, { buildingUid });
             }
         });
 
         GameEvents.on(EventNames.VILLAGER_UNASSIGN_REQUEST, ({ buildingUid, count }) => {
-            const building = gameScene.buildSystem.getBuilding(buildingUid);
-            if (building?.configId === 'BARRACKS') {
-                gameScene.villagerManager.unassign(buildingUid, count, gameScene.buildSystem);
-                GameEvents.emit(EventNames.WARRIORS_CHANGED, { buildingUid, building });
-            } else {
-                // Production buildings: recall the stationed/marching entity, then unassign
-                GameEvents.emit(EventNames.WORKER_RECALL_REQUEST, { buildingUid });
-            }
+            // All buildings: recall stationed/marching entity, then unassign
+            GameEvents.emit(EventNames.WORKER_RECALL_REQUEST, { buildingUid });
         });
 
         GameEvents.on(EventNames.BUILDING_UPGRADE_REQUEST, ({ buildingUid }) => {

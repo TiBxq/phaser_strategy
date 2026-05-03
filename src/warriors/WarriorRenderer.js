@@ -18,6 +18,20 @@ export class WarriorRenderer {
             this._syncPool(buildingUid, building);
         });
 
+        // March one warrior home; on arrival destroy it and notify VillagerRenderer
+        GameEvents.on(EventNames.WARRIOR_RECALL_REQUEST, ({ buildingUid }) => {
+            const pool = this._pools.get(buildingUid);
+            if (!pool || pool.length === 0) {
+                GameEvents.emit(EventNames.WARRIOR_RECALLED, { buildingUid });
+                return;
+            }
+            const warrior = pool.pop();
+            warrior.marchTo(warrior._homeCol, warrior._homeRow, () => {
+                warrior.destroy();
+                GameEvents.emit(EventNames.WARRIOR_RECALLED, { buildingUid });
+            });
+        });
+
         // Clean up sprites when a Barracks is demolished
         GameEvents.on(EventNames.BUILDING_REMOVED, ({ uid }) => {
             this._removeBuilding(uid);

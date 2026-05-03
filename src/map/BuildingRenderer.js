@@ -65,6 +65,7 @@ export class BuildingRenderer {
         GameEvents.on(EventNames.BUILDING_CONNECTIVITY_CHANGED, () => {
             this._refreshNoRoadIcons();
             this._refreshNoWorkerIcons();
+            this._updateWorkerTiles();
         });
 
         GameEvents.on(EventNames.BUILDING_REMOVED, ({ uid, fieldTiles }) => {
@@ -420,7 +421,7 @@ export class BuildingRenderer {
                     .setDepth(baseDepth + LAYER_WORKER);
                 sprite.play('soldier-idle');
                 this._workerSprites.set(key, sprite);
-                this._scheduleWorkerAction(key, sprite, animKey);
+                if (building.isConnected) this._scheduleWorkerAction(key, sprite, animKey);
             }
         }
     }
