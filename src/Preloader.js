@@ -37,6 +37,8 @@ export class Preloader extends Phaser.Scene {
         this.load.spritesheet('soldier-attack01', 'assets/characters/Soldier-Attack01.png', { frameWidth: 100, frameHeight: 100 });
         this.load.spritesheet('soldier-attack02', 'assets/characters/Soldier-Attack02.png', { frameWidth: 100, frameHeight: 100 });
         this.load.image('soldier-shadow', 'assets/characters/Soldier-Shadow.png');
+        this.load.spritesheet('orc-walk', 'assets/characters/Orc-Walk.png', { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('orc-idle', 'assets/characters/Orc-Idle.png', { frameWidth: 100, frameHeight: 100 });
 
         // Music
         this.load.audio('music-ambient', 'assets/music/Ambient.wav');
@@ -69,6 +71,18 @@ export class Preloader extends Phaser.Scene {
         this.anims.create({
             key: 'soldier-idle',
             frames: this.anims.generateFrameNumbers('soldier-idle', { start: 0, end: 5 }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: 'orc-walk',
+            frames: this.anims.generateFrameNumbers('orc-walk', { start: 0, end: 7 }),
+            frameRate: 10,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: 'orc-idle',
+            frames: this.anims.generateFrameNumbers('orc-idle', { start: 0, end: 5 }),
             frameRate: 8,
             repeat: -1,
         });
