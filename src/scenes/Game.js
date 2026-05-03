@@ -68,7 +68,7 @@ export class Game extends Phaser.Scene {
         this.mapRenderer      = new MapRenderer(this, this.tileMap);
         this.mapRenderer.setFogSystem(this.fogOfWarSystem);
         this.buildingRenderer = new BuildingRenderer(this, this.tileMap, this.buildSystem);
-        this.villagerRenderer = new VillagerRenderer(this, this.tileMap, this.fogOfWarSystem);
+        this.villagerRenderer = new VillagerRenderer(this, this.tileMap, this.fogOfWarSystem, this.buildSystem, this.villagerManager);
         this.warriorRenderer  = new WarriorRenderer(this, this.tileMap, this.fogOfWarSystem);
         this.banditRenderer   = new BanditRenderer(this, this.tileMap, this.banditCampSystem, this.fogOfWarSystem);
         this.floatingLabels   = new FloatingLabels(this);

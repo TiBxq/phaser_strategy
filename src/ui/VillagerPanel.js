@@ -129,15 +129,16 @@ export class VillagerPanel {
         const building = this.buildSystem.getBuilding(this._currentBuildingUid);
         if (!building) return;
         const config  = BUILDING_CONFIGS[building.configId];
-        const assigned = building.assignedVillagers;
+        const assigned = building.assignedVillagers ?? 0;
         const max      = config.claimsTileType === 'FOREST'
             ? Math.ceil(building.forestTiles.length / FOREST_TILES_PER_WORKER)
             : config.claimsTileType
                 ? building.fieldTiles.length
                 : config.maxVillagers;
 
-        const label = config.id === 'BARRACKS' ? 'Warriors' : 'Workers';
-        this._countLabel.setText(`${label}: ${assigned} / ${max}`);
+        const label    = config.id === 'BARRACKS' ? 'Warriors' : 'Workers';
+        const effective = assigned + (building.pendingWorkers ?? 0);
+        this._countLabel.setText(`${label}: ${effective} / ${max}`);
         this._freeLabel.setText(`Free: ${this._unassigned}`);
     }
 

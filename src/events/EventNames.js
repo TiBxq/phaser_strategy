@@ -121,4 +121,13 @@ export const EventNames = Object.freeze({
 
     // A building has been marked as the next pillage target — payload: { buildingUid: string|null }
     BANDIT_PILLAGE_TARGET: 'bandit:pillage_target',
+
+    // Request a free villager to march to a production building — payload: { buildingUid }
+    WORKER_DISPATCH_REQUEST: 'worker:dispatch_request',
+
+    // Request a stationed worker to be recalled from a building — payload: { buildingUid }
+    WORKER_RECALL_REQUEST: 'worker:recall_request',
+
+    // VillagerManager forcibly unassigned a worker from a building (e.g. starvation) — payload: { buildingUid }
+    WORKER_FORCE_RECALLED: 'worker:force_recalled',
 });

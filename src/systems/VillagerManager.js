@@ -43,6 +43,7 @@ export class VillagerManager {
                 this.assignments.set(uid, n);
                 const b = buildSystem?.getBuilding(uid);
                 if (b) b.assignedVillagers = n;
+                GameEvents.emit(EventNames.WORKER_FORCE_RECALLED, { buildingUid: uid });
                 return true;
             }
         }
@@ -66,15 +67,7 @@ export class VillagerManager {
 
         const config      = BUILDING_CONFIGS[building.configId];
         const current     = this.assignments.get(buildingUid) ?? 0;
-        // Dynamic cap for tile-based buildings:
-        //   Farm: 1 worker per 2×2 field block (fieldTiles = block anchors)
-        //   Lumbermill: ceil(forestTiles / 4) — 1 worker per 1–4 tiles, 2 per 5–8, etc.
-        //   Others: static config.maxVillagers
-        const maxAllowed  = config.claimsTileType === 'FOREST'
-            ? Math.ceil(building.forestTiles.length / FOREST_TILES_PER_WORKER)
-            : config.claimsTileType
-                ? building.fieldTiles.length
-                : config.maxVillagers;
+        const maxAllowed  = this._getMaxAllowed(building, config);
         const canAssign   = Math.min(count, this.unassigned, maxAllowed - current);
 
         if (canAssign <= 0) return 0;
@@ -103,6 +96,53 @@ export class VillagerManager {
 
         this._emit();
         return toFree;
+    }
+
+    /**
+     * Reserve one worker slot for a building (in-transit state).
+     * Decrements unassigned immediately but does NOT start production — call confirmWorker on arrival.
+     */
+    reserveWorker(buildingUid, buildSystem) {
+        const building = buildSystem.getBuilding(buildingUid);
+        if (!building || this.unassigned <= 0) return false;
+
+        const config     = BUILDING_CONFIGS[building.configId];
+        const assigned   = this.assignments.get(buildingUid) ?? 0;
+        const pending    = building.pendingWorkers ?? 0;
+        const maxAllowed = this._getMaxAllowed(building, config);
+        if (assigned + pending >= maxAllowed) return false;
+
+        this.unassigned--;
+        building.pendingWorkers = pending + 1;
+        this._emit();
+        return true;
+    }
+
+    /** Worker arrived at building — increment assignedVillagers and start production. */
+    confirmWorker(buildingUid, buildSystem) {
+        const building = buildSystem.getBuilding(buildingUid);
+        if (!building) return;
+
+        building.pendingWorkers = Math.max(0, (building.pendingWorkers ?? 0) - 1);
+        const current = this.assignments.get(buildingUid) ?? 0;
+        this.assignments.set(buildingUid, current + 1);
+        building.assignedVillagers = current + 1;
+        this._emit();
+    }
+
+    /** Cancel a reserved (in-transit) worker slot — return it to unassigned. */
+    cancelReserve(buildingUid, buildSystem) {
+        const building = buildSystem.getBuilding(buildingUid);
+        if (building) building.pendingWorkers = Math.max(0, (building.pendingWorkers ?? 0) - 1);
+        this.unassigned++;
+        this._emit();
+    }
+
+    /** Compute the effective max workers for a building (mirrors assign() logic). */
+    _getMaxAllowed(building, config) {
+        if (config.claimsTileType === 'FOREST') return Math.ceil(building.forestTiles.length / FOREST_TILES_PER_WORKER);
+        if (config.claimsTileType)               return building.fieldTiles.length;
+        return config.maxVillagers;
     }
 
     getAssigned(buildingUid) {
