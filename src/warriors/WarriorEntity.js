@@ -2,13 +2,16 @@ import * as Phaser from 'phaser';
 import { tileToWorld, TILE_H } from '../map/MapRenderer.js';
 import { aStar } from '../pathfinding/AStar.js';
 import { isWalkable, isWalkableForMarch, marchMoveCost, randomWalkableTileNear, heightMoveCost } from '../villagers/walkable.js';
-import { LAYER_VILLAGER, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
+import { LAYER_VILLAGER, LAYER_SHADOW, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
 
-const MOVE_DURATION = 600;   // slightly slower than villagers
-const IDLE_MIN_MS   = 800;
-const IDLE_MAX_MS   = 2000;
-const MAX_RETRIES   = 3;
-const WANDER_RADIUS = 4;     // Manhattan radius around home barracks
+const MOVE_DURATION    = 600;
+const IDLE_MIN_MS      = 800;
+const IDLE_MAX_MS      = 2000;
+const MAX_RETRIES      = 3;
+const WANDER_RADIUS    = 4;
+const SOLDIER_SCALE    = 1.0;
+const SOLDIER_Y_ADJUST = 34;
+const WARRIOR_TINT     = 0xff4444;
 
 export class WarriorEntity {
     constructor(scene, tileMap, col, row, homeCol, homeRow, fogSystem) {
@@ -19,8 +22,9 @@ export class WarriorEntity {
         this.row        = row;
         this._homeCol   = homeCol;
         this._homeRow   = homeRow;
-        this._path     = [];
-        this._pathStep = 0;
+        this._path      = [];
+        this._pathStep  = 0;
+        this._isWalking = false;
 
         // March state
         this._marching      = false;
@@ -29,10 +33,21 @@ export class WarriorEntity {
 
         const spawnTile = tileMap.getTile(col, row);
         const spawnH    = spawnTile ? spawnTile.height : 0;
-        const { x, y }  = tileToWorld(col, row, spawnH);
-        this._sprite = scene.add.image(x, y - TILE_H, 'sprite-warrior')
+        const { x, y } = tileToWorld(col, row, spawnH);
+        const spriteY   = y - TILE_H + SOLDIER_Y_ADJUST;
+        const baseDepth = col + row + spawnH * HEIGHT_DEPTH_BIAS;
+
+        this._shadow = scene.add.image(x, spriteY, 'soldier-shadow')
             .setOrigin(0.5, 1)
-            .setDepth(col + row + spawnH * HEIGHT_DEPTH_BIAS + LAYER_VILLAGER);
+            .setScale(SOLDIER_SCALE)
+            .setDepth(baseDepth + LAYER_SHADOW);
+
+        this._sprite = scene.add.sprite(x, spriteY, 'soldier-idle', 0)
+            .setOrigin(0.5, 1)
+            .setScale(SOLDIER_SCALE)
+            .setTint(WARRIOR_TINT)
+            .setDepth(baseDepth + LAYER_VILLAGER);
+        this._sprite.play('soldier-idle');
 
         this._scheduleWander();
     }
@@ -40,43 +55,38 @@ export class WarriorEntity {
     destroy() {
         if (this._wanderTimer) { this._wanderTimer.remove(); this._wanderTimer = null; }
         this._scene.tweens.killTweensOf(this._sprite);
+        this._scene.tweens.killTweensOf(this._shadow);
         this._sprite.destroy();
+        this._shadow.destroy();
     }
 
     // ── March API ──────────────────────────────────────────────────────────────
 
-    /**
-     * Interrupt wandering and march to (targetCol, targetRow) via A*.
-     * Calls onArrived() when the warrior reaches the destination (or gets as close
-     * as possible if the exact tile is unreachable).
-     */
     marchTo(targetCol, targetRow, onArrived) {
-        // Cancel pending wander timer and any active movement tween
         if (this._wanderTimer) { this._wanderTimer.remove(); this._wanderTimer = null; }
         this._scene.tweens.killTweensOf(this._sprite);
+        this._scene.tweens.killTweensOf(this._shadow);
 
-        // Snap sprite to logical position so there's no visual jump
         const currTile = this._tileMap.getTile(this.col, this.row);
         const currH    = currTile ? currTile.height : 0;
         const { x, y } = tileToWorld(this.col, this.row, currH);
-        this._sprite.setPosition(x, y - TILE_H);
+        const spriteY  = y - TILE_H + SOLDIER_Y_ADJUST;
+        this._sprite.setPosition(x, spriteY);
+        this._shadow.setPosition(x, spriteY);
 
         this._marching      = true;
         this._marchCallback = onArrived;
         this._path          = [];
         this._pathStep      = 0;
 
-        // All positions to try: anchor + other footprint tiles + 8-tile 2×2 perimeter
         const allTargets = [
-            [0,0],[1,0],[0,1],[1,1],        // footprint
-            [-1,0],[-1,1],                  // left perimeter
-            [2,0],[2,1],                    // right perimeter
-            [0,-1],[1,-1],                  // top perimeter
-            [0,2],[1,2],                    // bottom perimeter
+            [0,0],[1,0],[0,1],[1,1],
+            [-1,0],[-1,1],
+            [2,0],[2,1],
+            [0,-1],[1,-1],
+            [0,2],[1,2],
         ];
 
-        // Single A* with march-mode cost: buildings are passable but expensive (cost +20)
-        // so the pathfinder naturally routes around them when a reasonable detour exists.
         let path = [];
         for (const [dc, dr] of allTargets) {
             const alt = aStar(
@@ -90,7 +100,6 @@ export class WarriorEntity {
         }
 
         if (path.length < 2) {
-            // Truly unreachable (terrain cliffs) — fire callback immediately
             this._marching = false;
             this._marchCallback = null;
             if (onArrived) onArrived();
@@ -102,10 +111,13 @@ export class WarriorEntity {
         this._walkStep();
     }
 
-    /** March back to home barracks, then resume normal wandering. */
     marchHome() {
         this.marchTo(this._homeCol, this._homeRow, () => {
             this._marching = false;
+            if (this._isWalking) {
+                this._isWalking = false;
+                this._sprite.play('soldier-idle');
+            }
             this._scheduleWander();
         });
     }
@@ -145,8 +157,11 @@ export class WarriorEntity {
     _walkStep() {
         if (this._pathStep >= this._path.length) {
             this._path = []; this._pathStep = 0;
+            if (this._isWalking) {
+                this._isWalking = false;
+                this._sprite.play('soldier-idle');
+            }
             if (this._marching) {
-                // Reached march destination
                 this._marching = false;
                 const cb = this._marchCallback;
                 this._marchCallback = null;
@@ -164,27 +179,44 @@ export class WarriorEntity {
         const currH    = currTile ? currTile.height : 0;
         const { x, y } = tileToWorld(next.col, next.row, nextH);
 
-        const srcDepth = this.col + this.row + currH * HEIGHT_DEPTH_BIAS + LAYER_VILLAGER;
-        const dstDepth = next.col + next.row + nextH * HEIGHT_DEPTH_BIAS + LAYER_VILLAGER;
-        this._sprite.setDepth(Math.max(srcDepth, dstDepth));
+        const dx = (next.col - this.col) - (next.row - this.row);
+        this._sprite.setFlipX(dx < 0);
+        if (!this._isWalking) {
+            this._isWalking = true;
+            this._sprite.play('soldier-walk');
+        }
 
+        const srcDepth  = this.col + this.row + currH * HEIGHT_DEPTH_BIAS + LAYER_VILLAGER;
+        const dstDepth  = next.col + next.row + nextH * HEIGHT_DEPTH_BIAS + LAYER_VILLAGER;
+        const peakDepth = Math.max(srcDepth, dstDepth);
+        this._sprite.setDepth(peakDepth);
+        this._shadow.setDepth(peakDepth - (LAYER_VILLAGER - LAYER_SHADOW));
+
+        const targetY = y - TILE_H + SOLDIER_Y_ADJUST;
         this._scene.tweens.add({
             targets:  this._sprite,
             x,
-            y:        y - TILE_H,
+            y:        targetY,
             duration: MOVE_DURATION,
             ease:     'Linear',
             onComplete: () => {
                 this.col = next.col;
                 this.row = next.row;
                 this._sprite.setDepth(dstDepth);
+                this._shadow.setDepth(dstDepth - (LAYER_VILLAGER - LAYER_SHADOW));
                 this._pathStep++;
-                // Reveal fog along the march path so warriors illuminate their advance
                 if (this._marching && this._fogSystem) {
                     this._fogSystem.revealAround(this.col, this.row, 1);
                 }
                 this._walkStep();
             },
+        });
+        this._scene.tweens.add({
+            targets:  this._shadow,
+            x,
+            y:        targetY,
+            duration: MOVE_DURATION,
+            ease:     'Linear',
         });
     }
 }
