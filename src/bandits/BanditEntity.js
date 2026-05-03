@@ -22,9 +22,10 @@ export class BanditEntity {
         this._campCol   = campCol;
         this._campRow   = campRow;
         this._fogSystem = fogSystem;
-        this._path      = [];
-        this._pathStep  = 0;
-        this._isWalking = false;
+        this._path        = [];
+        this._pathStep    = 0;
+        this._isWalking   = false;
+        this._wanderTimer = null;
 
         const spawnTile = tileMap.getTile(col, row);
         const spawnH    = spawnTile ? spawnTile.height : 0;
@@ -48,6 +49,7 @@ export class BanditEntity {
     }
 
     destroy() {
+        if (this._wanderTimer) { this._wanderTimer.remove(); this._wanderTimer = null; }
         this._scene.tweens.killTweensOf(this._sprite);
         this._scene.tweens.killTweensOf(this._shadow);
         this._sprite.destroy();
@@ -66,7 +68,7 @@ export class BanditEntity {
     // ── Internal ──────────────────────────────────────────────────────────────
 
     _scheduleWander() {
-        this._scene.time.delayedCall(
+        this._wanderTimer = this._scene.time.delayedCall(
             Phaser.Math.Between(IDLE_MIN_MS, IDLE_MAX_MS),
             () => this._startWander(0),
         );
