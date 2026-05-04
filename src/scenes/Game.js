@@ -16,6 +16,7 @@ import { FogOfWarSystem, VIS_MIN, VIS_MAX } from '../systems/FogOfWarSystem.js';
 import { BanditCampSystem } from '../systems/BanditCampSystem.js';
 import { BanditThreatSystem } from '../systems/BanditThreatSystem.js';
 import { BanditRenderer } from '../bandits/BanditRenderer.js';
+import { CritterRenderer } from '../critters/CritterRenderer.js';
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
@@ -71,6 +72,7 @@ export class Game extends Phaser.Scene {
         this.villagerRenderer = new VillagerRenderer(this, this.tileMap, this.fogOfWarSystem, this.buildSystem, this.villagerManager);
         this.warriorRenderer  = new WarriorRenderer(this, this.tileMap, this.fogOfWarSystem);
         this.banditRenderer   = new BanditRenderer(this, this.tileMap, this.banditCampSystem, this.fogOfWarSystem);
+        this.critterRenderer  = new CritterRenderer(this, this.tileMap, this.fogOfWarSystem, this.villagerRenderer);
         this.floatingLabels   = new FloatingLabels(this);
 
         // ── Music ──────────────────────────────────────────────────────────────

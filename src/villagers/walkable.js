@@ -63,6 +63,59 @@ export function randomWalkableTileNear(tileMap, centerCol, centerRow, radius) {
     return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
+/** Wild tile: GRASS or FOREST with no building and no road. */
+export function isWildTile(tile) {
+    return tile
+        && (tile.type === 'GRASS' || tile.type === 'FOREST')
+        && !tile.buildingId
+        && !tile.isRoad;
+}
+
+/**
+ * Returns true if (col, row) is wild AND no tile within `buffer` steps
+ * contains a building or road. Use for destination selection so animals
+ * never pick resting spots adjacent to civilization.
+ */
+export function isDeepWildTile(tileMap, col, row, buffer = 2) {
+    for (let dr = -buffer; dr <= buffer; dr++) {
+        for (let dc = -buffer; dc <= buffer; dc++) {
+            const t = tileMap.getTile(col + dc, row + dr);
+            if (t && (t.buildingId || t.isRoad)) return false;
+        }
+    }
+    return isWildTile(tileMap.getTile(col, row));
+}
+
+/** Escape-mode walkability: GRASS/FOREST regardless of roads or buildings.
+ *  Used when a critter is trapped and needs to cross civilized tiles. */
+export function isEscapableTile(tile) {
+    return tile && (tile.type === 'GRASS' || tile.type === 'FOREST');
+}
+
+const ESCAPE_PENALTY = 100;
+
+/** Movement cost for escaping critters: normal height cost plus a heavy penalty for
+ *  non-wild tiles so A* routes through the minimum number of road/building tiles. */
+export function escapeMoveCost(fromTile, toTile) {
+    const base = heightMoveCost(fromTile, toTile);
+    if (base === Infinity) return Infinity;
+    return base + (isWildTile(toTile) ? 0 : ESCAPE_PENALTY);
+}
+
+/** Returns a random wild tile from the entire map, optionally excluding one position. */
+export function randomWildTile(tileMap, exclude = null) {
+    const candidates = [];
+    for (let row = 0; row < MAP_SIZE; row++) {
+        for (let col = 0; col < MAP_SIZE; col++) {
+            if (exclude && col === exclude.col && row === exclude.row) continue;
+            const t = tileMap.getTile(col, row);
+            if (isWildTile(t)) candidates.push(t);
+        }
+    }
+    if (!candidates.length) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
 export function randomWalkableTile(tileMap, exclude = null, fogSystem = null) {
     const candidates = [];
     for (let row = 0; row < MAP_SIZE; row++) {

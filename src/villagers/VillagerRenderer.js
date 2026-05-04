@@ -204,6 +204,15 @@ export class VillagerRenderer {
         this._recalling.delete(buildingUid);
     }
 
+    /** Returns {col, row} of all visible (non-stationed) villager entities. */
+    getVisiblePositions() {
+        const positions = this._free.map(e => ({ col: e.col, row: e.row }));
+        for (const arr of this._marchingTo.values()) {
+            for (const e of arr) positions.push({ col: e.col, row: e.row });
+        }
+        return positions;
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     _makeEntityFree(entity, building) {

@@ -19,6 +19,7 @@ export const LAYER_FIELD         = 0.20;  // farm field sprites
 export const LAYER_WORKER_SHADOW = 0.23;  // shadow beneath worker sprites on tiles
 export const LAYER_WORKER        = 0.25;  // worker sprites on tiles (field/forest)
 export const LAYER_SHADOW        = 0.28;  // shadow beneath wandering villager sprites
+export const LAYER_CRITTER       = 0.29;  // critter (animal) sprites
 export const LAYER_VILLAGER    = 0.30;  // villager sprites
 export const LAYER_TILE_SELECT = 0.60;  // tile selection highlight
 export const LAYER_BUILDING    = 2.90;  // building sprite (above all 4 footprint tiles)

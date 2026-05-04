@@ -40,6 +40,12 @@ export class Preloader extends Phaser.Scene {
         this.load.spritesheet('orc-walk', 'assets/characters/Orc-Walk.png', { frameWidth: 100, frameHeight: 100 });
         this.load.spritesheet('orc-idle', 'assets/characters/Orc-Idle.png', { frameWidth: 100, frameHeight: 100 });
 
+        // Critter: stag — walk 11 frames (352px / 32px), idle 24 frames (768px / 32px)
+        for (const dir of ['NE', 'NW', 'SE', 'SW']) {
+            this.load.spritesheet(`stag-${dir}-walk`, `assets/characters/critters/stag/critter_stag_${dir}_walk.png`, { frameWidth: 32, frameHeight: 41 });
+            this.load.spritesheet(`stag-${dir}-idle`, `assets/characters/critters/stag/critter_stag_${dir}_idle.png`, { frameWidth: 32, frameHeight: 41 });
+        }
+
         // Music
         this.load.audio('music-ambient', 'assets/music/Ambient.wav');
 
@@ -86,6 +92,22 @@ export class Preloader extends Phaser.Scene {
             frameRate: 8,
             repeat: -1,
         });
+        // Stag critter animations
+        for (const dir of ['NE', 'NW', 'SE', 'SW']) {
+            this.anims.create({
+                key: `stag-${dir}-walk`,
+                frames: this.anims.generateFrameNumbers(`stag-${dir}-walk`, { start: 0, end: 10 }),
+                frameRate: 10,
+                repeat: -1,
+            });
+            this.anims.create({
+                key: `stag-${dir}-idle`,
+                frames: this.anims.generateFrameNumbers(`stag-${dir}-idle`, { start: 0, end: 23 }),
+                frameRate: 8,
+                repeat: -1,
+            });
+        }
+
         this.anims.create({
             key: 'soldier-attack01',
             frames: this.anims.generateFrameNumbers('soldier-attack01', { start: 0, end: 5 }),
