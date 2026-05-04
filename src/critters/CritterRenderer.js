@@ -1,18 +1,19 @@
-import { CritterEntity } from './CritterEntity.js';
+import { CritterEntity, STAG_SPECIES, BOAR_SPECIES } from './CritterEntity.js';
 import { isWildTile, isDeepWildTile } from '../villagers/walkable.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 import { MAP_SIZE } from '../map/TileMap.js';
 
 const TILES_PER_CRITTER = 30;
-const MAX_CRITTERS      = 20;
+const MAX_PER_SPECIES   = 10;
 
 export class CritterRenderer {
     constructor(scene, tileMap, fogSystem, villagerRenderer) {
         this._scene       = scene;
         this._tileMap     = tileMap;
         this._fogSystem   = fogSystem;
-        this._critters    = [];
+        this._stags       = [];
+        this._boars       = [];
         this._getVillagers = villagerRenderer
             ? () => villagerRenderer.getVisiblePositions()
             : () => [];
@@ -29,7 +30,8 @@ export class CritterRenderer {
         }
 
         GameEvents.on(EventNames.FOG_UPDATED, () => {
-            for (const critter of this._critters) critter.updateVisibility();
+            for (const c of this._stags) c.updateVisibility();
+            for (const c of this._boars) c.updateVisibility();
         });
     }
 
@@ -37,8 +39,9 @@ export class CritterRenderer {
 
     _recalculate() {
         const wildCount = this._countWildTiles();
-        const target    = Math.min(Math.floor(wildCount / TILES_PER_CRITTER), MAX_CRITTERS);
-        this._syncCount(target);
+        const target    = Math.min(Math.floor(wildCount / TILES_PER_CRITTER), MAX_PER_SPECIES);
+        this._syncPool(this._stags, target, STAG_SPECIES);
+        this._syncPool(this._boars, target, BOAR_SPECIES);
     }
 
     _countWildTiles() {
@@ -51,17 +54,15 @@ export class CritterRenderer {
         return count;
     }
 
-    _syncCount(target) {
-        while (this._critters.length < target) {
+    _syncPool(pool, target, species) {
+        while (pool.length < target) {
             const tile = this._randomSpawnTile();
             if (!tile) break;
-            this._critters.push(
-                new CritterEntity(this._scene, this._tileMap, tile.col, tile.row, this._fogSystem, this._getVillagers),
+            pool.push(
+                new CritterEntity(this._scene, this._tileMap, tile.col, tile.row, this._fogSystem, this._getVillagers, species),
             );
         }
-        while (this._critters.length > target) {
-            this._critters.pop().destroy();
-        }
+        while (pool.length > target) pool.pop().destroy();
     }
 
     // Prefer fog-hidden/border tiles so critters start in the unexplored wilderness.

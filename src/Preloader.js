@@ -46,6 +46,16 @@ export class Preloader extends Phaser.Scene {
             this.load.spritesheet(`stag-${dir}-idle`, `assets/characters/critters/stag/critter_stag_${dir}_idle.png`, { frameWidth: 32, frameHeight: 41 });
         }
 
+        // Critter: boar — NW frameWidth=40, others=41; NE/NW frameHeight=30, SE/SW frameHeight=25
+        this.load.spritesheet('boar-NE-idle', 'assets/characters/critters/boar/boar_NE_idle_strip.png', { frameWidth: 41, frameHeight: 30 });
+        this.load.spritesheet('boar-NW-idle', 'assets/characters/critters/boar/boar_NW_idle_strip.png', { frameWidth: 40, frameHeight: 30 });
+        this.load.spritesheet('boar-SE-idle', 'assets/characters/critters/boar/boar_SE_idle_strip.png', { frameWidth: 41, frameHeight: 25 });
+        this.load.spritesheet('boar-SW-idle', 'assets/characters/critters/boar/boar_SW_idle_strip.png', { frameWidth: 41, frameHeight: 25 });
+        this.load.spritesheet('boar-NE-run',  'assets/characters/critters/boar/boar_NE_run_strip.png',  { frameWidth: 41, frameHeight: 30 });
+        this.load.spritesheet('boar-NW-run',  'assets/characters/critters/boar/boar_NW_run_strip.png',  { frameWidth: 40, frameHeight: 30 });
+        this.load.spritesheet('boar-SE-run',  'assets/characters/critters/boar/boar_SE_run_strip.png',  { frameWidth: 41, frameHeight: 25 });
+        this.load.spritesheet('boar-SW-run',  'assets/characters/critters/boar/boar_SW_run_strip.png',  { frameWidth: 41, frameHeight: 25 });
+
         // Music
         this.load.audio('music-ambient', 'assets/music/Ambient.wav');
 
@@ -104,6 +114,21 @@ export class Preloader extends Phaser.Scene {
                 key: `stag-${dir}-idle`,
                 frames: this.anims.generateFrameNumbers(`stag-${dir}-idle`, { start: 0, end: 23 }),
                 frameRate: 8,
+                repeat: -1,
+            });
+        }
+        // Boar critter animations — idle: 7 frames, run: 4 frames
+        for (const dir of ['NE', 'NW', 'SE', 'SW']) {
+            this.anims.create({
+                key: `boar-${dir}-idle`,
+                frames: this.anims.generateFrameNumbers(`boar-${dir}-idle`, { start: 0, end: 6 }),
+                frameRate: 8,
+                repeat: -1,
+            });
+            this.anims.create({
+                key: `boar-${dir}-run`,
+                frames: this.anims.generateFrameNumbers(`boar-${dir}-run`, { start: 0, end: 3 }),
+                frameRate: 12,
                 repeat: -1,
             });
         }
