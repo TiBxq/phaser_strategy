@@ -250,8 +250,12 @@ export class BuildingMenu {
         for (const id of MENU_ORDER) {
             if (!this._checkRequirements(id)) continue;
             const { texts, cost } = this._priceTags[id];
-            const color = this._resourceSystem.canAfford(cost) ? '#ffdd88' : '#ff4444';
-            for (const t of texts) t.setColor(color);
+            const costEntries = Object.entries(cost).filter(([, v]) => v > 0);
+            for (let j = 0; j < costEntries.length; j++) {
+                const [resource, amount] = costEntries[j];
+                const has = this._resourceSystem.get(resource) ?? 0;
+                texts[j].setColor(has >= amount ? '#ffdd88' : '#ff4444');
+            }
         }
     }
 
