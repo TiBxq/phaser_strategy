@@ -117,6 +117,35 @@ export function randomWildTile(tileMap, exclude = null) {
     return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
+/**
+ * Returns a random walkable tile that sits on the inner edge of the fog —
+ * i.e. a FOG_VISIBLE tile that has at least one FOG_BORDER (state=1) neighbor.
+ * Falls back to null if no such tile exists.
+ */
+export function randomWalkableTileAtFogEdge(tileMap, exclude, fogSystem) {
+    if (!fogSystem) return null;
+    const candidates = [];
+    for (let row = 0; row < MAP_SIZE; row++) {
+        for (let col = 0; col < MAP_SIZE; col++) {
+            if (exclude && col === exclude.col && row === exclude.row) continue;
+            if (!fogSystem.isVisible(col, row)) continue;
+            const t = tileMap.getTile(col, row);
+            if (!isWalkable(t)) continue;
+            let nearBorder = false;
+            outer: for (let dr = -1; dr <= 1 && !nearBorder; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    const s = fogSystem.getState(col + dc, row + dr);
+                    if (s === 1) { nearBorder = true; break outer; }
+                }
+            }
+            if (nearBorder) candidates.push(t);
+        }
+    }
+    if (!candidates.length) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
 export function randomWalkableTile(tileMap, exclude = null, fogSystem = null) {
     const candidates = [];
     for (let row = 0; row < MAP_SIZE; row++) {

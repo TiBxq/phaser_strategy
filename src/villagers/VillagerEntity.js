@@ -1,6 +1,6 @@
 import { tileToWorld, TILE_H } from '../map/MapRenderer.js';
 import { aStar } from '../pathfinding/AStar.js';
-import { isWalkable, randomWalkableTile, heightMoveCost } from './walkable.js';
+import { isWalkable, randomWalkableTile, randomWalkableTileAtFogEdge, heightMoveCost } from './walkable.js';
 import { LAYER_VILLAGER, LAYER_SHADOW, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
 import { WanderingEntity } from '../critters/WanderingEntity.js';
 
@@ -59,7 +59,12 @@ export class VillagerEntity extends WanderingEntity {
     _isWalkableTile(tile) { return isWalkable(tile); }
 
     _pickDestination() {
-        return randomWalkableTile(this._tileMap, { col: this.col, row: this.row }, this._fogSystem);
+        const exclude = { col: this.col, row: this.row };
+        if (this._fogSystem && Math.random() < 0.35) {
+            const edge = randomWalkableTileAtFogEdge(this._tileMap, exclude, this._fogSystem);
+            if (edge) return edge;
+        }
+        return randomWalkableTile(this._tileMap, exclude, this._fogSystem);
     }
 
     setVisible(v) {
