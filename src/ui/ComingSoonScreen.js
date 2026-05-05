@@ -109,7 +109,7 @@ export class ComingSoonScreen {
                 const tx = cx + (col - row) * HW;
                 const ty = baseY + (col + row) * HH + TILE_H;
                 const depth = DEPTH + 1.5 + sum * 0.01;
-                this._add(scene.add.image(tx, ty, 'tile-grass-h0')
+                this._add(scene.add.image(tx, ty, 'tile-grass-v0-h0')
                     .setScrollFactor(0).setDepth(depth).setOrigin(0.5, 1));
             }
         }

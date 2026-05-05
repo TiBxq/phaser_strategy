@@ -3,7 +3,7 @@ import { TILE_TYPES } from '../data/TileTypes.js';
 import { MAP_SIZE } from './TileMap.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
-import { DEPTH_TILE_HOVER, LAYER_TILE_SELECT, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
+import { DEPTH_TILE_HOVER, LAYER_TILE_SELECT, LAYER_FIELD, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
 import { FOG_HIDDEN, FOG_BORDER, FOG_VISIBLE } from '../systems/FogOfWarSystem.js';
 
 export const TILE_W = 64;
@@ -65,7 +65,9 @@ export class MapRenderer {
         this.tileMap = tileMap;
 
         // tileSprites[row][col] = Phaser Image
-        this.tileSprites = [];
+        this.tileSprites   = [];
+        // flowerSprites[row][col] = Phaser Image | undefined (only for tiles with flowerVariant)
+        this.flowerSprites = [];
 
         this._highlightSprite  = null;
         this._selectedSprites  = [];   // array — selection can span multiple tiles
@@ -88,7 +90,8 @@ export class MapRenderer {
         order.sort((a, b) => a.depth - b.depth);
 
         for (let row = 0; row < MAP_SIZE; row++) {
-            this.tileSprites[row] = [];
+            this.tileSprites[row]   = [];
+            this.flowerSprites[row] = [];
         }
 
         for (const { col, row } of order) {
@@ -132,6 +135,17 @@ export class MapRenderer {
             });
 
             this.tileSprites[row][col] = img;
+
+            if (tile.flowerVariant !== null) {
+                // Use h0 texture always; shift up by height levels + wall band height
+                // so the flower diamond aligns with the grass diamond face.
+                const fy = y - tile.height * HEIGHT_STEP - TILE_DEPTH - 8;
+                const flower = this.scene.add.image(x, fy, `tile-flower-v${tile.flowerVariant}-h0`)
+                    .setOrigin(0.5, 1)
+                    .setDepth(depth + LAYER_FIELD)
+                    .setVisible(false); // fog controls visibility; shown in refreshFogTile
+                this.flowerSprites[row][col] = flower;
+            }
         }
     }
 
@@ -228,6 +242,9 @@ export class MapRenderer {
         const sprite = this.tileSprites[row]?.[col];
         if (!tile || !sprite) return;
 
+        const flower = this.flowerSprites[row]?.[col];
+        const flowerVisible = flower && !tile.isRoad && !tile.buildingId && !tile.isField;
+
         if (state === FOG_VISIBLE) {
             sprite.setVisible(true);
             sprite.setInteractive(
@@ -240,16 +257,19 @@ export class MapRenderer {
                 Phaser.Geom.Polygon.Contains
             );
             this.refreshTile(col, row);
+            if (flower) { flower.setVisible(flowerVisible).clearTint(); }
 
         } else if (state === FOG_BORDER) {
             sprite.setVisible(true);
             sprite.setTexture(`tile-grass-h${tile.height}`);
             sprite.setTint(0x888888);
             sprite.disableInteractive();
+            if (flower) { flower.setVisible(flowerVisible).setTint(0x888888); }
 
         } else { // FOG_HIDDEN
             sprite.setVisible(false);
             sprite.disableInteractive();
+            if (flower) { flower.setVisible(false); }
         }
     }
 
@@ -317,6 +337,11 @@ export class MapRenderer {
             sprite.setTint(0xffcc44);
         } else {
             sprite.clearTint();
+        }
+
+        const flower = this.flowerSprites[row]?.[col];
+        if (flower) {
+            flower.setVisible(!tile.isRoad && !tile.buildingId && !tile.isField);
         }
     }
 

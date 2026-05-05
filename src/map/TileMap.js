@@ -165,6 +165,7 @@ export class TileMap {
             col,
             row,
             type: typeId,
+            flowerVariant: typeId === 'GRASS' && Math.random() < 0.10 ? Math.floor(Math.random() * 4) : null,
             buildingId: null,
             isField: false,
             ownedBy: null,         // uid of building that claimed this tile for production
@@ -259,8 +260,9 @@ export class TileMap {
             const tile = this.getTile(col, row);
             if (!tile || tile.type !== 'GRASS') continue;
 
-            tile.type      = 'FOREST';
-            tile.resources = TILE_TYPES.FOREST.initialResources;
+            tile.type          = 'FOREST';
+            tile.resources     = TILE_TYPES.FOREST.initialResources;
+            tile.flowerVariant = null;
             placed.add(pick);
 
             // Add GRASS neighbors as expansion candidates
@@ -297,10 +299,11 @@ export class TileMap {
             for (let c = c0; c <= c0 + 1; c++) {
                 const tile = this.getTile(c, r);
                 if (!tile) continue;
-                tile.type      = 'ROCKS';
-                tile.resources = TILE_TYPES.ROCKS.initialResources;
-                tile.height    = minH;
-                tile.isRamp    = false;
+                tile.type          = 'ROCKS';
+                tile.resources     = TILE_TYPES.ROCKS.initialResources;
+                tile.height        = minH;
+                tile.isRamp        = false;
+                tile.flowerVariant = null;
             }
         }
     }
@@ -324,10 +327,11 @@ export class TileMap {
             for (let c = c0; c <= c0 + 1; c++) {
                 const t = this.getTile(c, r);
                 if (!t) continue;
-                t.type      = 'IRON';
-                t.resources = TILE_TYPES.IRON.initialResources;
-                t.height    = minH;
-                t.isRamp    = false;
+                t.type          = 'IRON';
+                t.resources     = TILE_TYPES.IRON.initialResources;
+                t.height        = minH;
+                t.isRamp        = false;
+                t.flowerVariant = null;
             }
 
         // Scatter ~3 individual IRON tiles in cells adjacent to the 2×2 block
@@ -338,8 +342,9 @@ export class TileMap {
             if (placed >= 3) break;
             const t = this.getTile(c0 + dc, r0 + dr);
             if (!t || t.type !== 'GRASS') continue;
-            t.type      = 'IRON';
-            t.resources = TILE_TYPES.IRON.initialResources;
+            t.type          = 'IRON';
+            t.resources     = TILE_TYPES.IRON.initialResources;
+            t.flowerVariant = null;
             placed++;
         }
     }
@@ -613,8 +618,9 @@ export class TileMap {
             const row  = this._rng(0, MAP_SIZE - 1);
             const tile = this.getTile(col, row);
             if (tile && tile.type === 'GRASS') {
-                tile.type      = 'ROCKS';
-                tile.resources = TILE_TYPES.ROCKS.initialResources;
+                tile.type          = 'ROCKS';
+                tile.resources     = TILE_TYPES.ROCKS.initialResources;
+                tile.flowerVariant = null;
                 placed++;
             }
         }

@@ -184,6 +184,27 @@ export class Preloader extends Phaser.Scene {
         const SRC_WALL_OFFSET = 24;    // y-offset of the wall band within a source frame
         const SRC_WALL_HEIGHT = 8;     // height of the wall band in the source frame
 
+        // Flower decoration variants: row 3 col 8,9 and row 4 col 2,3
+        const FLOWER_VARIANT_FRAMES = [
+            3 * SHEET_COLS + 8,  // v0: row 3 col 8
+            3 * SHEET_COLS + 9,  // v1: row 3 col 9
+            4 * SHEET_COLS + 2,  // v2: row 4 col 2
+            4 * SHEET_COLS + 3,  // v3: row 4 col 3
+        ];
+
+        for (let v = 0; v < FLOWER_VARIANT_FRAMES.length; v++) {
+            const src  = this.textures.getFrame('tileset', FLOWER_VARIANT_FRAMES[v]);
+            const dest = this.textures.createCanvas(`tile-flower-v${v}-h0`, TILE_W, TILE_W);
+            const ctx  = dest.getContext();
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(
+                src.source.image,
+                src.cutX, src.cutY, SRC_FRAME_SIZE, SRC_FRAME_SIZE,
+                0, 0, TILE_W, TILE_W,
+            );
+            dest.refresh();
+        }
+
         const TERRAIN_FRAMES = {
             'tile-grass':  FRAME_GRASS,
             'tile-forest': FRAME_FOREST,
