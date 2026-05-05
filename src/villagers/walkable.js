@@ -63,12 +63,13 @@ export function randomWalkableTileNear(tileMap, centerCol, centerRow, radius) {
     return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-/** Wild tile: GRASS or FOREST with no building and no road. */
+/** Wild tile: GRASS or FOREST with no building, road, or civilization claim (farm field / forest). */
 export function isWildTile(tile) {
     return tile
         && (tile.type === 'GRASS' || tile.type === 'FOREST')
         && !tile.buildingId
-        && !tile.isRoad;
+        && !tile.isRoad
+        && !tile.ownedBy;
 }
 
 /**

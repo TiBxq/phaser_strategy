@@ -101,8 +101,6 @@ export class CritterEntity extends WanderingEntity {
     }
 
     _startWander(retries) {
-        if (this._proximityTimer) { this._proximityTimer.remove(); this._proximityTimer = null; }
-
         if (retries < MAX_RETRIES) {
             super._startWander(retries);
             return;
@@ -187,13 +185,19 @@ export class CritterEntity extends WanderingEntity {
     _scheduleProximityCheck() {
         this._proximityTimer = this._scene.time.delayedCall(PROXIMITY_CHECK, () => {
             this._proximityTimer = null;
-            if (this._isWalking) return;
 
             const tooClose = this._getVillagers().some(v =>
                 Math.abs(v.col - this.col) + Math.abs(v.row - this.row) <= FLEE_RADIUS,
             );
             if (tooClose) {
                 if (this._wanderTimer) { this._wanderTimer.remove(); this._wanderTimer = null; }
+                if (this._isWalking) {
+                    this._scene.tweens.killTweensOf(this._sprite);
+                    this._path     = [];
+                    this._pathStep = 0;
+                    this._isWalking = false;
+                    this._sprite.play(this._species.idleAnimKey(this._lastDir));
+                }
                 this._startWander(0);
             } else {
                 this._scheduleProximityCheck();

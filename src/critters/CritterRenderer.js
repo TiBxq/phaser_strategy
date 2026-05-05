@@ -5,7 +5,7 @@ import { EventNames } from '../events/EventNames.js';
 import { MAP_SIZE } from '../map/TileMap.js';
 
 const TILES_PER_CRITTER = 30;
-const MAX_PER_SPECIES   = 10;
+const MAX_PER_SPECIES   = 7;
 
 export class CritterRenderer {
     constructor(scene, tileMap, fogSystem, villagerRenderer) {
