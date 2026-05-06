@@ -5,12 +5,12 @@ const RAMP_MOVE_COST = 2;   // cost for movement up/down a ramp tile
 
 /** A tile is walkable if it is grass with no building on it. */
 export function isWalkable(tile) {
-    return tile && tile.type === 'GRASS' && !tile.buildingId;
+    return tile && tile.type === 'GRASS' && !tile.buildingId && !tile.isOcean;
 }
 
 /** March-mode walkability: GRASS only, ignores buildings (they're passable at high cost). */
 export function isWalkableForMarch(tile) {
-    return tile && tile.type === 'GRASS';
+    return tile && tile.type === 'GRASS' && !tile.isOcean;
 }
 
 const BUILDING_MARCH_COST = 20;  // high enough that A* prefers a ~20-tile detour
@@ -67,6 +67,7 @@ export function randomWalkableTileNear(tileMap, centerCol, centerRow, radius) {
 export function isWildTile(tile) {
     return tile
         && (tile.type === 'GRASS' || tile.type === 'FOREST')
+        && !tile.isOcean
         && !tile.buildingId
         && !tile.isRoad
         && !tile.ownedBy;
@@ -90,7 +91,7 @@ export function isDeepWildTile(tileMap, col, row, buffer = 2) {
 /** Escape-mode walkability: GRASS/FOREST regardless of roads or buildings.
  *  Used when a critter is trapped and needs to cross civilized tiles. */
 export function isEscapableTile(tile) {
-    return tile && (tile.type === 'GRASS' || tile.type === 'FOREST');
+    return tile && (tile.type === 'GRASS' || tile.type === 'FOREST') && !tile.isOcean;
 }
 
 const ESCAPE_PENALTY = 100;

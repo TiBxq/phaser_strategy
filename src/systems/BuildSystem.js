@@ -50,6 +50,9 @@ export class BuildSystem {
         if (footprint.some(t => !t))
             return { valid: false, reason: 'Out of bounds.' };
 
+        if (footprint.some(t => t.isOcean))
+            return { valid: false, reason: 'Cannot build on ocean.' };
+
         if (footprint.some(t => !config.buildableOn.includes(t.type)))
             return { valid: false, reason: `Must be built on ${config.buildableOn.join(' or ')}.` };
 

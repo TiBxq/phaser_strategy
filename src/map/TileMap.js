@@ -46,7 +46,7 @@ export class TileMap {
     _generateOnce() {
         this._featureAnchors = [];
 
-        // Phase 1: fill all tiles with GRASS
+        // Phase 1: fill all tiles with GRASS (also resets isOcean on retry)
         for (let row = 0; row < MAP_SIZE; row++) {
             this.grid[row] = [];
             for (let col = 0; col < MAP_SIZE; col++) {
@@ -123,7 +123,10 @@ export class TileMap {
         // Phase 5: scatter pass — small random forest patches + stray rock tiles
         this._scatter();
 
-        // Phase 6: ramp placement
+        // Phase 6: coastline erosion — irregularises the island edge before ramps
+        this._generateCoastline();
+
+        // Phase 7: ramp placement (runs after coastline so ocean tiles aren't treated as land)
         this._placeRamps();
     }
 
@@ -172,6 +175,7 @@ export class TileMap {
             height: 0,             // elevation 0–3
             isRamp: false,         // true when GRASS tile transitions height down to a neighbor
             isRoad: false,         // true when a road has been placed on this tile
+            isOcean: false,        // true for coastal tiles that render as sea rather than land
             resources: TILE_TYPES[typeId].initialResources,  // remaining harvestable units
             banditClaimed: false,  // true when inside the bandit camp's territory radius
             banditCampTile: false, // true for the 4 footprint tiles of the bandit camp itself
@@ -216,16 +220,72 @@ export class TileMap {
         }
     }
 
+    /**
+     * Erodes the map edge into an irregular coastline using smooth value noise.
+     * Only tiles near each edge (within MAX_ERODE steps) are candidates.
+     * Protected from erosion: bandit territory, resource tiles, and the player's
+     * starting visible area (col ≥ VIS_MIN AND row ≥ VIS_MIN).
+     */
+    _generateCoastline() {
+        // Two-octave smooth value noise: coarse grid for broad bays, fine grid for detail
+        const buildGrid = (g) => Array.from({ length: Math.ceil(MAP_SIZE / g) + 2 },
+            () => Array.from({ length: Math.ceil(MAP_SIZE / g) + 2 }, () => Math.random()));
+
+        const lerp   = (a, b, t) => a + (b - a) * t;
+        const smooth = t => t * t * (3 - 2 * t);
+        const sample = (grid, g, x, y) => {
+            const gx = x / g, gy = y / g;
+            const ix = Math.floor(gx), iy = Math.floor(gy);
+            const fx = smooth(gx - ix), fy = smooth(gy - iy);
+            const GH = grid.length, GW = grid[0].length;
+            const v = (r, c) => grid[Math.max(0, Math.min(GH - 1, r))][Math.max(0, Math.min(GW - 1, c))];
+            return lerp(lerp(v(iy, ix), v(iy, ix + 1), fx),
+                        lerp(v(iy + 1, ix), v(iy + 1, ix + 1), fx), fy);
+        };
+
+        const gridCoarse = buildGrid(5);
+        const gridFine   = buildGrid(2);
+        const noise2d = (x, y) =>
+            0.65 * sample(gridCoarse, 5, x, y) + 0.35 * sample(gridFine, 2, x, y);
+
+        const MAX_ERODE = 6; // max tiles of ocean intrusion from each edge
+
+        for (let row = 0; row < MAP_SIZE; row++) {
+            for (let col = 0; col < MAP_SIZE; col++) {
+                const edgeDist = Math.min(col, row, MAP_SIZE - 1 - col, MAP_SIZE - 1 - row);
+                if (edgeDist >= MAX_ERODE) continue;
+
+                const tile = this.getTile(col, row);
+                if (!tile) continue;
+
+                // Only protect the actual camp footprint and resource deposits —
+                // everything else (including starting area + bandit territory) can erode.
+                // The connectivity BFS (up to 20 retries) enforces accessibility.
+                if (tile.banditCampTile) continue;
+                if (tile.type === 'IRON' || tile.type === 'ROCKS') continue;
+
+                // Ocean probability falls off with distance from edge:
+                //   edgeDist=0 → ~50 %,  dist=2 → ~32 %,  dist=4 → ~14 %
+                const n         = noise2d(col, row);
+                const threshold = 0.50 - edgeDist * 0.09;
+                if (n < threshold) {
+                    tile.isOcean = true;
+                    tile.height  = 0;
+                }
+            }
+        }
+    }
+
     _placeRamps() {
         for (let row = 0; row < MAP_SIZE; row++) {
             for (let col = 0; col < MAP_SIZE; col++) {
                 const tile = this.grid[row][col];
-                // Only GRASS tiles at height > 0 can be ramps
-                if (tile.type !== 'GRASS' || tile.height === 0) continue;
-                // Mark as ramp if any 4-dir GRASS neighbor is one level lower
+                // Only non-ocean GRASS tiles at height > 0 can be ramps
+                if (tile.type !== 'GRASS' || tile.height === 0 || tile.isOcean) continue;
+                // Mark as ramp if any 4-dir non-ocean GRASS neighbor is one level lower
                 tile.isRamp = false;
                 for (const n of this.getNeighbors(col, row)) {
-                    if (n.type === 'GRASS' && n.height === tile.height - 1) {
+                    if (n.type === 'GRASS' && !n.isOcean && n.height === tile.height - 1) {
                         tile.isRamp = true;
                         break;
                     }
@@ -508,7 +568,7 @@ export class TileMap {
         for (let r = VIS_MIN; r <= VIS_MAX; r++) {
             for (let c = VIS_MIN; c <= VIS_MAX; c++) {
                 const t = this.getTile(c, r);
-                if (t && t.type === 'GRASS' && !t.banditClaimed) {
+                if (t && t.type === 'GRASS' && !t.banditClaimed && !t.isOcean) {
                     const key = `${c},${r}`;
                     visited.add(key);
                     if (!t.isRamp) reachable.add(key);
@@ -526,7 +586,7 @@ export class TileMap {
                 const key = `${nc},${nr}`;
                 if (visited.has(key)) continue;
                 const t = this.getTile(nc, nr);
-                if (!t || t.type !== 'GRASS' || t.banditClaimed) continue;
+                if (!t || t.type !== 'GRASS' || t.banditClaimed || t.isOcean) continue;
 
                 // Enforce height continuity: can't cross a cliff.
                 const hDiff = Math.abs(t.height - src.height);
@@ -553,7 +613,7 @@ export class TileMap {
         for (let r = VIS_MIN; r <= VIS_MAX; r++) {
             for (let c = VIS_MIN; c <= VIS_MAX; c++) {
                 const t = this.getTile(c, r);
-                if (t && t.type === 'GRASS') {
+                if (t && t.type === 'GRASS' && !t.isOcean) {
                     const key = `${c},${r}`;
                     reachable.add(key);
                     queue.push([c, r]);
@@ -570,7 +630,7 @@ export class TileMap {
                 const key = `${nc},${nr}`;
                 if (reachable.has(key)) continue;
                 const t = this.getTile(nc, nr);
-                if (!t || t.type !== 'GRASS') continue;
+                if (!t || t.type !== 'GRASS' || t.isOcean) continue;
 
                 const hDiff = Math.abs(t.height - src.height);
                 if (hDiff > 1) continue;

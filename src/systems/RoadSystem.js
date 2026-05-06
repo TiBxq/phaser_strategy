@@ -26,6 +26,8 @@ export class RoadSystem {
             return { valid: false, reason: 'Out of bounds.' };
         if (tile.banditClaimed)
             return { valid: false, reason: 'Cannot build roads in bandit territory.' };
+        if (tile.isOcean)
+            return { valid: false, reason: 'Cannot build roads on ocean.' };
         if (tile.type !== 'GRASS')
             return { valid: false, reason: 'Roads can only be built on grass.' };
         if (tile.buildingId)
