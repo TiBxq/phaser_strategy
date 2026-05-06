@@ -79,6 +79,7 @@ export class Game extends Phaser.Scene {
         this.sound.play('music-ambient', { loop: true, volume: 0.6 });
 
         // ── Camera ─────────────────────────────────────────────────────────────
+        this.cameras.main.setBackgroundColor('#080820');
         this._setupCamera();
 
         // ── Input ──────────────────────────────────────────────────────────────

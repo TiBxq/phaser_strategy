@@ -82,9 +82,71 @@ export class MapRenderer {
 
         this._fogSystem = null;
 
+        // oceanSprites keyed by "col,row" — fog controls their visibility
+        this._oceanSprites = new Map();
+
+        this._renderOcean();
         this._render();
         this._createOverlays();
         this._bindEvents();
+    }
+
+    _renderOcean() {
+        const BORDER = 5;
+        const order  = [];
+
+        for (let row = -BORDER; row < MAP_SIZE + BORDER; row++) {
+            for (let col = -BORDER; col < MAP_SIZE + BORDER; col++) {
+                if (col >= 0 && col < MAP_SIZE && row >= 0 && row < MAP_SIZE) continue;
+                const dc   = col < 0 ? -col : col >= MAP_SIZE ? col - (MAP_SIZE - 1) : 0;
+                const dr   = row < 0 ? -row : row >= MAP_SIZE ? row - (MAP_SIZE - 1) : 0;
+                const dist = Math.max(dc, dr);
+                order.push({ col, row, depth: col + row, dist });
+            }
+        }
+        order.sort((a, b) => a.depth - b.depth);
+
+        // _oceanList sorted by distance from map for fog propagation (inner → outer)
+        this._oceanList = [];
+
+        for (const { col, row, depth, dist } of order) {
+            const texKey  = this._oceanTexKey(col, row);
+            const { x, y } = tileToWorld(col, row, 0);
+            const sprite = this.scene.add.image(x, y, texKey)
+                .setOrigin(0.5, 1)
+                .setDepth(depth)
+                .setVisible(false);
+            this._oceanSprites.set(`${col},${row}`, sprite);
+            this._oceanList.push({ col, row, sprite, dist });
+        }
+        this._oceanList.sort((a, b) => a.dist - b.dist);
+    }
+
+    _oceanTexKey(col, row) {
+        const inMap = (c, r) => c >= 0 && c < MAP_SIZE && r >= 0 && r < MAP_SIZE;
+        const nw = inMap(col - 1, row);
+        const ne = inMap(col, row - 1);
+        const se = inMap(col + 1, row);
+        const sw = inMap(col, row + 1);
+
+        const count = (nw ? 1 : 0) + (ne ? 1 : 0) + (se ? 1 : 0) + (sw ? 1 : 0);
+        if (count === 0) return 'tile-ocean';
+        if (count >= 4)  return 'tile-shore-surrounded';
+
+        if (count === 1) {
+            if (nw) return 'tile-shore-nw';
+            if (ne) return 'tile-shore-ne';
+            if (se) return 'tile-shore-se';
+            return 'tile-shore-sw';
+        }
+
+        // Two adjacent edges
+        if (nw && ne) return 'tile-shore-nw-ne';
+        if (se && sw) return 'tile-shore-se-sw';
+        if (nw && sw) return 'tile-shore-nw-sw';
+        if (ne && se) return 'tile-shore-ne-se';
+
+        return 'tile-ocean';  // opposite pair (rare, fallback)
     }
 
     _render() {
@@ -207,6 +269,13 @@ export class MapRenderer {
             for (const { col, row } of changes) {
                 this.refreshFogTile(col, row);
             }
+            this._updateAllOceanFog();
+        });
+
+        // Buildings placed on already-visible land produce no FOG_UPDATED changes,
+        // but ocean adjacency may still need refreshing (e.g. shore buildings).
+        GameEvents.on(EventNames.BUILDING_PLACED, () => {
+            this._updateAllOceanFog();
         });
 
         GameEvents.on(EventNames.BANDIT_CAMP_CLEARED, ({ clearedTiles }) => {
@@ -234,6 +303,38 @@ export class MapRenderer {
             for (let col = 0; col < MAP_SIZE; col++) {
                 this.refreshFogTile(col, row);
             }
+        }
+        this._updateAllOceanFog();
+    }
+
+    _updateAllOceanFog() {
+        if (!this._fogSystem) return;
+        // Process inner → outer so outer tiles can inherit their inner neighbour's state.
+        // Each step away from the map degrades the fog state by 1:
+        //   dist=1 inherits land state; dist=2 drops one level; dist=3+ → hidden.
+        const tempState = new Map();
+
+        for (const { col, row, sprite, dist } of this._oceanList) {
+            let innerState = FOG_HIDDEN;
+            // 8-directional: corner ocean tiles (outside map on both axes) have no
+            // cardinal in-map neighbours, but diagonal ones exist — without this they
+            // would always read FOG_HIDDEN regardless of processing order.
+            for (const [nc, nr] of [
+                [col-1,row],[col+1,row],[col,row-1],[col,row+1],
+                [col-1,row-1],[col+1,row-1],[col-1,row+1],[col+1,row+1],
+            ]) {
+                const ns = (nc >= 0 && nc < MAP_SIZE && nr >= 0 && nr < MAP_SIZE)
+                    ? this._fogSystem.getState(nc, nr)
+                    : (tempState.get(`${nc},${nr}`) ?? FOG_HIDDEN);
+                if (ns > innerState) innerState = ns;
+            }
+            // Outermost 2 tiles stay at most FOG_BORDER — deep ocean is only hinted
+            const state = dist >= 4 ? Math.min(innerState, FOG_BORDER) : innerState;
+            tempState.set(`${col},${row}`, state);
+
+            if (state === FOG_VISIBLE)     { sprite.setVisible(true).clearTint(); }
+            else if (state === FOG_BORDER) { sprite.setVisible(true).setTint(0x888888); }
+            else                           { sprite.setVisible(false); }
         }
     }
 

@@ -68,6 +68,7 @@ export class Preloader extends Phaser.Scene {
 
     create() {
         this._generateTileTexturesFromSpritesheet();
+        this._generateOceanTextures();
         this._generateRoadTextures();
         this._generateTileOverlays();
         this._generateNoRoadIcon();
@@ -262,6 +263,45 @@ export class Preloader extends Phaser.Scene {
             0, 0, TILE_W, TILE_W,
         );
         fieldDest.refresh();
+    }
+
+    _generateOceanTextures() {
+        const SHEET_COLS = 11;
+        const SRC = 32;
+
+        // Row 10 (0-indexed) ocean tile layout:
+        //   col 0: deep water (no land adjacent)
+        //   col 1: NE ripple  (land to NE, i.e. row-1 is land)
+        //   col 2: NW ripple  (land to NW, i.e. col-1 is land)
+        //   col 3: SE ripple  (land to SE, i.e. col+1 is land)
+        //   col 4: SW ripple  (land to SW, i.e. row+1 is land)
+        //   col 5: NE+NW      (land to both upper edges)
+        //   col 6: SE+SW      (land to both lower edges)
+        //   col 7: NW+SW      (land to both left edges)
+        //   col 8: NE+SE      (land to both right edges)
+        //   col 9: surrounded (land on all 4 sides)
+        const R = 10 * SHEET_COLS;  // row 10 base = 110
+        const OCEAN_FRAMES = {
+            'tile-ocean':            R + 0,
+            'tile-shore-ne':         R + 1,
+            'tile-shore-nw':         R + 2,
+            'tile-shore-se':         R + 3,
+            'tile-shore-sw':         R + 4,
+            'tile-shore-nw-ne':      R + 5,
+            'tile-shore-se-sw':      R + 6,
+            'tile-shore-nw-sw':      R + 7,
+            'tile-shore-ne-se':      R + 8,
+            'tile-shore-surrounded': R + 9,
+        };
+
+        for (const [key, frameIndex] of Object.entries(OCEAN_FRAMES)) {
+            const src  = this.textures.getFrame('tileset', frameIndex);
+            const dest = this.textures.createCanvas(key, TILE_W, TILE_W);
+            const ctx  = dest.getContext();
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(src.source.image, src.cutX, src.cutY, SRC, SRC, 0, 0, TILE_W, TILE_W);
+            dest.refresh();
+        }
     }
 
     /**
