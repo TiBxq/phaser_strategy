@@ -6,6 +6,14 @@ import { EventNames } from '../events/EventNames.js';
 import { DEPTH_TILE_HOVER, LAYER_TILE_SELECT, LAYER_FIELD, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
 import { FOG_HIDDEN, FOG_BORDER, FOG_VISIBLE } from '../systems/FogOfWarSystem.js';
 
+// Tileset frame indices for flower decoration variants (row*11+col)
+const FLOWER_FRAMES = [
+    3 * 11 + 8,  // row 3 col 8
+    3 * 11 + 9,  // row 3 col 9
+    4 * 11 + 0,  // row 4 col 0
+    4 * 11 + 2,  // row 4 col 2
+];
+
 export const TILE_W = 64;
 export const TILE_H = 32;
 // Extra height for the depth faces drawn below the diamond.
@@ -137,11 +145,12 @@ export class MapRenderer {
             this.tileSprites[row][col] = img;
 
             if (tile.flowerVariant !== null) {
-                // Use h0 texture always; shift up by height levels + wall band height
-                // so the flower diamond aligns with the grass diamond face.
-                const fy = y - tile.height * HEIGHT_STEP - TILE_DEPTH - 8;
-                const flower = this.scene.add.image(x, fy, `tile-flower-v${tile.flowerVariant}-h0`)
-                    .setOrigin(0.5, 1)
+                // Diamond center = 32px from tile canvas bottom at 2×.
+                // These decoration frames have visual content ~8px below frame center,
+                // so shift fy up by 8 to visually center the flower on the diamond face.
+                const fy = y - tile.height * HEIGHT_STEP - TILE_W / 2 - 16;
+                const flower = this.scene.add.image(x, fy, 'tileset', FLOWER_FRAMES[tile.flowerVariant])
+                    .setOrigin(0.5, 0.5)
                     .setDepth(depth + LAYER_FIELD)
                     .setVisible(false); // fog controls visibility; shown in refreshFogTile
                 this.flowerSprites[row][col] = flower;
