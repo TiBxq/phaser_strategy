@@ -69,7 +69,6 @@ export class Preloader extends Phaser.Scene {
     create() {
         this._generateTileTexturesFromSpritesheet();
         this._generateOceanTextures();
-        this._generateRoadTextures();
         this._generateTileOverlays();
         this._generateNoRoadIcon();
         this._generateStarvationIcon();
@@ -172,10 +171,11 @@ export class Preloader extends Phaser.Scene {
     _generateTileTexturesFromSpritesheet() {
         // Spritesheet layout: frame index = row * SHEET_COLS + col, each frame 32×32.
         const SHEET_COLS     = 11;
-        const FRAME_GRASS    = 2 * SHEET_COLS;   // 22 — row 2, col 0
-        const FRAME_FOREST   = 3 * SHEET_COLS + 3;   // 55 — row 5, col 0
-        const FRAME_ROCKS    = 5 * SHEET_COLS + 6;   // 77 — row 7, col 0
-        const FRAME_FIELD    = 0;                 //  0 — row 0, col 0
+        const FRAME_GRASS    = 2 * SHEET_COLS;       // 22 — row 2, col 0
+        const FRAME_FOREST   = 3 * SHEET_COLS + 3;   // 36 — row 3, col 3
+        const FRAME_ROCKS    = 5 * SHEET_COLS + 6;   // 61 — row 5, col 6
+        const FRAME_ROAD     = 0 * SHEET_COLS + 9;   //  9 — row 0, col 9
+        const FRAME_FIELD    = 2 * SHEET_COLS + 4;   // row 2, col 4
 
         // Source frame layout (32×32 px, 1× scale):
         //   y =  0.. 7 — 8px decoration above diamond
@@ -189,6 +189,7 @@ export class Preloader extends Phaser.Scene {
             'tile-grass':  FRAME_GRASS,
             'tile-forest': FRAME_FOREST,
             'tile-rocks':  FRAME_ROCKS,
+            'tile-road':   FRAME_ROAD,
         };
 
         for (const [base, frameIndex] of Object.entries(TERRAIN_FRAMES)) {
@@ -301,43 +302,6 @@ export class Preloader extends Phaser.Scene {
             ctx.imageSmoothingEnabled = false;
             ctx.drawImage(src.source.image, src.cutX, src.cutY, SRC, SRC, 0, 0, TILE_W, TILE_W);
             dest.refresh();
-        }
-    }
-
-    /**
-     * Generate procedural road tile textures for each height variant (h0–hN).
-     *
-     * Canvas size: TILE_W × (TILE_W + h * HEIGHT_STEP), same as spritesheet tiles.
-     * The deco band (top 16px) is left transparent so it does not obscure tiles
-     * behind it — only the diamond face and cliff wall bands are drawn.
-     *
-     * Diamond face (interactive area):
-     *   top=(32, deco)  right=(64, deco+hh)  bottom=(32, deco+TILE_H)  left=(0, deco+hh)
-     * Cliff wall: a TILE_DEPTH-tall strip at y = deco+TILE_H, plus one per height level.
-     */
-    _generateRoadTextures() {
-        const hw   = TILE_W / 2;   // 32
-        const hh   = TILE_H / 2;   // 16
-        const deco = TILE_DEPTH;   // 16 — transparent band above the interactive diamond
-
-        const ROAD_TOP = 0x9B8B6A;  // tan packed-dirt surface
-
-        for (let h = 0; h <= MAX_TILE_HEIGHT; h++) {
-            const canvasH = TILE_W + h * HEIGHT_STEP;
-            const g = this.make.graphics({ x: 0, y: 0, add: false });
-
-            // Diamond face only — roads are surface markings, not 3D blocks.
-            // The underlying grass tile provides all isometric depth; no cliff strip needed.
-            g.fillStyle(ROAD_TOP, 1);
-            g.fillPoints([
-                { x: hw,     y: deco          },
-                { x: TILE_W, y: deco + hh     },
-                { x: hw,     y: deco + TILE_H },
-                { x: 0,      y: deco + hh     },
-            ], true);
-
-            g.generateTexture(`tile-road-h${h}`, TILE_W, canvasH);
-            g.destroy();
         }
     }
 

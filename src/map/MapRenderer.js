@@ -251,11 +251,11 @@ export class MapRenderer {
             .setDepth(DEPTH_TILE_HOVER)
             .setVisible(false);
 
-        this._roadGhostSprite = this.scene.add.image(0, 0, 'tile-road-h0')
+        this._roadGhostSprite = this.scene.add.image(0, 0, 'tile-highlight')
             .setOrigin(0.5, 1)
             .setDepth(DEPTH_TILE_HOVER)
             .setVisible(false)
-            .setAlpha(0.75);
+            .setAlpha(0.9);
     }
 
     _bindEvents() {
@@ -457,7 +457,6 @@ export class MapRenderer {
         if (!tile) { this.hideRoadGhost(); return; }
         const { x, y } = tileToWorld(col, row, tile.height);
         this._roadGhostSprite
-            .setTexture(`tile-road-h${tile.height}`)
             .setPosition(x, y)
             .setTint(valid ? 0x00ff88 : 0xff4444)
             .setVisible(true);
