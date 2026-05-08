@@ -218,10 +218,8 @@ export class ProductionSystem {
             if (tile.resources <= 0) {
                 depletedIndices.push(i);
                 const isBuildingFootprint = !!tile.buildingId;
-                if (!isBuildingFootprint) {
-                    tile.type    = 'GRASS';
-                    tile.ownedBy = null;
-                }
+                tile.type    = 'GRASS';
+                if (!isBuildingFootprint) tile.ownedBy = null;
                 GameEvents.emit(EventNames.TILE_DEPLETED, {
                     col: tiles[i].col, row: tiles[i].row,
                     buildingUid: building.uid, isBuildingFootprint,

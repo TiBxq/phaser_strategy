@@ -138,8 +138,8 @@ export class Game extends Phaser.Scene {
             }
         });
 
-        GameEvents.on(EventNames.TILE_DEPLETED, ({ col, row, isBuildingFootprint }) => {
-            if (!isBuildingFootprint) this.mapRenderer.refreshTile(col, row);
+        GameEvents.on(EventNames.TILE_DEPLETED, ({ col, row }) => {
+            this.mapRenderer.refreshTile(col, row);
         });
 
         // Refresh freed field tiles so they revert to their natural appearance
