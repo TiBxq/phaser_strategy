@@ -109,7 +109,7 @@ export class ComingSoonScreen {
                 const tx = cx + (col - row) * HW;
                 const ty = baseY + (col + row) * HH + TILE_H;
                 const depth = DEPTH + 1.5 + sum * 0.01;
-                this._add(scene.add.image(tx, ty, 'tile-grass-v0-h0')
+                this._add(scene.add.image(tx, ty, 'tile-grass-h0')
                     .setScrollFactor(0).setDepth(depth).setOrigin(0.5, 1));
             }
         }
@@ -130,20 +130,22 @@ export class ComingSoonScreen {
                 .setScale(0.5));
         }
 
-        // Characters in foreground — evenly spread, 2× scale (integer = crisp pixel art)
+        // Characters in foreground — animated sprites
         const chars = [
-            { col: 0, row: 2, key: 'sprite-villager' },
-            { col: 1, row: 1, key: 'sprite-warrior'  },
-            { col: 2, row: 1, key: 'sprite-bandit'   },
+            { col: 0, row: 2, tex: 'soldier-idle', anim: 'soldier-idle' },
+            { col: 1, row: 1, tex: 'soldier-idle', anim: 'soldier-idle' },
+            { col: 2, row: 1, tex: 'orc-idle',     anim: 'orc-idle'     },
         ];
-        for (const { col, row, key } of chars) {
+        for (const { col, row, tex, anim } of chars) {
             const tx = cx + (col - row) * HW;
-            const ty = baseY + (col + row) * HH + TILE_H - 4;
-            this._add(scene.add.image(tx, ty, key)
+            const ty = baseY + (col + row) * HH + TILE_H + 16;
+            const spr = scene.add.sprite(tx, ty, tex, 0)
                 .setScrollFactor(0)
                 .setDepth(DEPTH + 2.5 + (col + row) * 0.01)
                 .setOrigin(0.5, 1)
-                .setScale(2));
+                .setScale(1);
+            spr.play(anim);
+            this._add(spr);
         }
     }
 
