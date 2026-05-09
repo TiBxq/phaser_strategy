@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && gh-pages -d dist"
+    "deploy": "npm run build && gh-pages -d dist",
+    "build:itch": "vite build --base ./ && powershell -NoProfile -Command \"Compress-Archive -Force -Path dist/* -DestinationPath the-settlement.zip\" && echo Done! Upload the-settlement.zip to itch.io"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0",
