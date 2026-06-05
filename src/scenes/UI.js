@@ -23,7 +23,7 @@ export class UI extends Phaser.Scene {
         const gameScene = this.scene.get('Game');
 
         this.resourceBar  = new ResourceBar(this);
-        this.buildingMenu = new BuildingMenu(this, gameScene.resourceSystem, gameScene.buildSystem);
+        this.buildingMenu = new BuildingMenu(this, gameScene.resourceSystem, gameScene.buildSystem, gameScene.questSystem);
         this.buildModeIndicator = new BuildModeIndicator(this);
         this.notificationManager = new NotificationManager(this);
         this.tileInfoPanel = new TileInfoPanel(this, gameScene.buildSystem, gameScene.tileMap, gameScene.resourceSystem);

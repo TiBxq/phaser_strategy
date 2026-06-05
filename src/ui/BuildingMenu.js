@@ -31,13 +31,15 @@ const ENTRY_W    = ICON_SIZE + ICON_GAP + NUM_W;
 const MENU_ORDER = ['TOWN_HALL', 'HOUSE', 'FARM', 'LUMBERMILL', 'QUARRY', 'IRON_MINE', 'SMITHY', 'BARRACKS', 'MARKET', 'WAREHOUSE', 'ROAD'];
 
 export class BuildingMenu {
-    constructor(scene, resourceSystem, buildSystem) {
+    constructor(scene, resourceSystem, buildSystem, questSystem) {
         this.scene           = scene;
         this._resourceSystem = resourceSystem;
         this._buildSystem    = buildSystem;
+        this._questSystem    = questSystem;
         this._activeId       = null;
         this._buttons        = {};
         this._priceTags      = {}; // id -> { texts, cost }
+        this._questPulseTween = null;
 
         // Background
         scene.add.image(scene.scale.width / 2, scene.scale.height, 'ui-bottombar')
@@ -144,6 +146,19 @@ export class BuildingMenu {
 
         // Apply initial lock states
         this._updateLockStates();
+
+        // Quest highlight: pulse Town Hall while its placement task is pending
+        GameEvents.on(EventNames.QUEST_STARTED,        ({ quest }) => this._onQuestStarted(quest));
+        GameEvents.on(EventNames.QUEST_TASK_COMPLETED, ({ task })  => { if (task.id === 'build_town_hall') this._stopQuestPulse('TOWN_HALL'); });
+        GameEvents.on(EventNames.QUEST_COMPLETED,      ()          => this._stopQuestPulse('TOWN_HALL'));
+
+        // Apply on construction if the first quest is already running
+        if (questSystem) {
+            const q = questSystem.currentQuest;
+            if (q?.id === 'FIRST_STEPS' && !questSystem.isTaskDone('build_town_hall')) {
+                this._startQuestPulse('TOWN_HALL');
+            }
+        }
     }
 
     // ─── Lock system ───────────────────────────────────────────────────────────
@@ -179,6 +194,7 @@ export class BuildingMenu {
             const { texts, icons, lockedLabel } = this._priceTags[id];
 
             if (id === 'TOWN_HALL' && this._isTownHallPlaced()) {
+                this._stopQuestPulse('TOWN_HALL');
                 btn.setVisible(false).disableInteractive();
                 lbl.setVisible(false);
                 for (const t of texts) t.setVisible(false);
@@ -268,6 +284,41 @@ export class BuildingMenu {
             return `Needs: ${reqLabel}`;
         }
         return '';
+    }
+
+    // ─── Quest highlight ───────────────────────────────────────────────────────
+
+    _onQuestStarted(quest) {
+        this._stopQuestPulse('TOWN_HALL');
+        if (quest.id === 'FIRST_STEPS' && this._questSystem && !this._questSystem.isTaskDone('build_town_hall')) {
+            this._startQuestPulse('TOWN_HALL');
+        }
+    }
+
+    _startQuestPulse(id) {
+        const entry = this._buttons[id];
+        if (!entry || !entry.btn.visible) return;
+        entry.btn.setTint(0xffcc33);
+        this._questPulseTween = this.scene.tweens.add({
+            targets:    entry.btn,
+            alpha:      { from: 1, to: 0.45 },
+            duration:   600,
+            ease:       'Sine.easeInOut',
+            yoyo:       true,
+            loop:       -1,
+        });
+    }
+
+    _stopQuestPulse(id) {
+        if (this._questPulseTween) {
+            this._questPulseTween.stop();
+            this._questPulseTween = null;
+        }
+        const entry = this._buttons[id];
+        if (entry) {
+            entry.btn.clearTint();
+            entry.btn.setAlpha(1);
+        }
     }
 
     // ─── Active state ──────────────────────────────────────────────────────────
