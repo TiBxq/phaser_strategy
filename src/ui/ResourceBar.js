@@ -52,7 +52,7 @@ export class ResourceBar {
         });
 
         // Villager count (far right)
-        this._villagerLabel = scene.add.text(955, y, 'Villagers: 0 (0 free)', TEXT_STYLE)
+        this._villagerLabel = scene.add.text(910, y, 'Villagers: 0 (0 free)', TEXT_STYLE)
             .setOrigin(1, 0.5)
             .setScrollFactor(0)
             .setDepth(1001);

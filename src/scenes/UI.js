@@ -10,6 +10,7 @@ import { BanditAlert } from '../ui/BanditAlert.js';
 import { FOG_VISIBLE } from '../systems/FogOfWarSystem.js';
 import { QuestPanel } from '../ui/QuestPanel.js';
 import { ComingSoonScreen } from '../ui/ComingSoonScreen.js';
+import { PauseMenu } from '../ui/PauseMenu.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
@@ -32,6 +33,36 @@ export class UI extends Phaser.Scene {
         this.banditAlert   = new BanditAlert(this);
         this.questPanel       = new QuestPanel(this, gameScene.questSystem);
         this.comingSoonScreen = new ComingSoonScreen(this);
+        this.pauseMenu        = new PauseMenu(this);
+
+        // Pause button — top-right of ResourceBar strip
+        const pauseBtn = this.add.text(950, 20, '⏸', {
+            fontFamily: 'monospace',
+            fontSize: '18px',
+            color: '#aaaacc',
+            backgroundColor: '#1a1a2e',
+            padding: { x: 5, y: 2 },
+        }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(1002).setInteractive({ useHandCursor: true });
+        pauseBtn.on('pointerover', () => pauseBtn.setColor('#ffffff'));
+        pauseBtn.on('pointerout',  () => pauseBtn.setColor('#aaaacc'));
+        pauseBtn.on('pointerdown', () => GameEvents.emit(EventNames.GAME_PAUSED));
+
+        // Pause / resume / restart
+        GameEvents.on(EventNames.GAME_PAUSED, () => {
+            this.scene.pause('Game');
+            this.pauseMenu.show();
+        });
+
+        GameEvents.on(EventNames.GAME_RESUMED, () => {
+            this.scene.resume('Game');
+            this.pauseMenu.hide();
+        });
+
+        GameEvents.on(EventNames.GAME_RESTART_REQUEST, () => {
+            GameEvents.removeAllListeners();
+            this.scene.stop('Game');
+            this.scene.start('Menu');
+        });
 
         // Wire villager assignment events to VillagerManager
         GameEvents.on(EventNames.VILLAGER_ASSIGN_REQUEST, ({ buildingUid, count }) => {

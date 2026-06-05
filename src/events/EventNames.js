@@ -136,4 +136,13 @@ export const EventNames = Object.freeze({
 
     // WarriorRenderer signals that a recalled warrior has arrived home — payload: { buildingUid }
     WARRIOR_RECALLED: 'warrior:recalled',
+
+    // Player paused the game
+    GAME_PAUSED: 'game:paused',
+
+    // Player resumed from pause
+    GAME_RESUMED: 'game:resumed',
+
+    // Player requested a full restart from the pause menu
+    GAME_RESTART_REQUEST: 'game:restart_request',
 });

@@ -327,6 +327,8 @@ export class Game extends Phaser.Scene {
                 GameEvents.emit(EventNames.BUILD_MODE_EXIT);
             } else if (this._selectedTile) {
                 GameEvents.emit(EventNames.TILE_DESELECTED);
+            } else {
+                GameEvents.emit(EventNames.GAME_PAUSED);
             }
         });
     }
