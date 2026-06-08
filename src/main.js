@@ -20,6 +20,6 @@ const config = {
     scene: [Preloader, Menu, Game, UI],
 };
 
-new Phaser.Game(config);
+window.__game = new Phaser.Game(config);
 
 document.getElementById('game-container').addEventListener('contextmenu', e => e.preventDefault());
