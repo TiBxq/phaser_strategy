@@ -202,7 +202,7 @@ Steps:
 2. Sweep to target anchor with `{ steps: 15 }`, wait 100ms, verify green via JS
 3. Click to place
 4. **Pause immediately** after placement (`page.mouse.click(1011, 160)`)
-5. Take screenshot to confirm quest "Build a Town Hall" ✓ and Villagers shows 4
+5. Confirm via JS: `questSystem.isTaskDone('buildTownHall')` and `villagerManager.total === 4`
 
 ### Phase 4: Enter Farm Mode and Find Farm Position
 **IMPORTANT: Farm mode is only available AFTER TH is placed**
@@ -218,12 +218,31 @@ Steps:
 - Recommended: Farm anchor at (col_th - 3, row_th) — 3 cols left → road at (col_th - 1, row_th)
 - OR: Farm anchor at (col_th, row_th - 3) — 3 rows above → road at (col_th, row_th - 1)
 
+**⚠ Check field yield BEFORE committing to a Farm position:**
+Farm claims up to 4 cardinal 2×2 GRASS blocks as fields. Each field = 1 worker slot = 3 food/tick. With 4 villagers consuming 4/tick you need **at least 2 fields** to run a surplus going into Quest 2. A Farm that only claims 1 field (3/tick production) breaks even at best — and once the hunger recovery system returns departed villagers, you're stuck in a food deadlock with no way to accumulate the 20 food needed to build a House.
+
+Before clicking to place, verify the candidate position has 2+ claimable blocks:
+```js
+// Check cardinal 2×2 GRASS blocks around Farm anchor (fc, fr)
+const dirs = [[fc, fr-2], [fc, fr+2], [fc-2, fr], [fc+2, fr]]; // N/S/W/E
+for (const [bc, br] of dirs) {
+  const tiles = [[bc,br],[bc+1,br],[bc,br+1],[bc+1,br+1]];
+  const ok = tiles.every(([c,r]) => {
+    const t = tileMap.getTile(c,r);
+    return t && t.type==='GRASS' && !t.buildingId && !t.isField
+        && !t.isRamp && t.height===0 && !t.banditClaimed && !t.isOcean;
+  });
+  // ok === true → this direction yields a field
+}
+```
+Forests, elevated tiles, ocean tiles, or already-claimed fields in the cardinal blocks reduce yield. Favour Farm positions with open flat GRASS in at least 2 directions.
+
 ### Phase 5: Place Farm
 1. Confirm green ghost at Farm position
 2. `await page.mouse.click(farm_vp_x, farm_vp_y)` to place
-3. **Pause immediately** 
-4. Take screenshot to confirm quest "Build a Farm" ✓
-5. Check TileInfoPanel shows Farm with "No road connection"
+3. **Pause immediately**
+4. Confirm via JS: `questSystem.isTaskDone('buildFarm')`
+5. Read `building.fieldTiles` to see which 2×2 blocks were claimed as fields — **do this before planning your road tile** (see PITFALL 18)
 
 ### Phase 6: Place Road
 1. Continue pause, press ESC to exit Farm mode
@@ -234,26 +253,27 @@ Steps:
 6. **Pause, verify**: Farm's TileInfoPanel should no longer show "No road connection"
 
 **Identifying the road tile:**
-- Road must be adjacent to TH footprint AND adjacent to Farm footprint (or Farm's field blocks)
+- Road must be adjacent to TH footprint AND adjacent to Farm footprint **or any field tile** (field tiles count for connectivity even though you cannot place a road ON them)
 - If TH at (20,17) and Farm at (17,17): road at (19,17) works
-- The road tile must be flat GRASS — if red ghost, try adjacent tiles
+- The road tile must be flat GRASS and not a field tile — if red ghost, try adjacent tiles
+- **Farm field blocks occupy GRASS tiles adjacent to the Farm footprint.** You cannot place a road ON a field tile. Check `building.fieldTiles` after Farm placement to know which anchor blocks were claimed, and avoid those 2×2 zones when choosing your road tile (see PITFALL 18).
+- Because field tiles count for connectivity, a road tile adjacent to any field tile also connects the Farm — this gives you more valid road positions than just the footprint edges.
 
 ### Phase 7: Assign Workers to Farm — MUST come before Lumbermill
 1. Exit Road mode (ESC)
 2. Click Farm building in idle mode to select it
 3. VillagerPanel shows "Workers: 0/N, Free: 4"
 4. Click the `[+]` button to assign workers (button at ~vp(877, 523))
-5. Assign **at least 2 workers** — need `ceil(villagerCount / 3)` to cover food consumption (4 villagers → 2 workers → 6 food/tick produced vs 4 consumed)
+5. Assign **as many workers as possible**, targeting `ceil(villagerCount / 3)` to cover food consumption (4 villagers → need 2 workers → 6 food/tick produced vs 4 consumed). **Note**: worker cap = `building.fieldTiles.length` (1 field = max 1 worker). If only 1 field was claimed, net food will be -1/tick; losing a villager to starvation is expected — that reduces consumption to 3/tick which breaks even.
 6. **Wait 2–3 seconds unpaused** for the villager to walk to the Farm and confirm arrival (see PITFALL 11) — do NOT re-pause immediately
 7. Confirm quest "Put workers to work" ✓ in quest panel, then pause
 8. **Do not proceed to Lumbermill until food is stable** — if still STARVING, assign a third worker and wait for food to recover above 0 before continuing
 
 ### Phase 8: Lumbermill (only after food is stable)
 1. Confirm food > 0 and Farm is producing before entering Lumbermill build mode
-2. Lumbermill needs flat GRASS adjacent to Forest tiles
-3. Place Lumbermill near the forest cluster visible on the map
-4. Place road tile(s) from the existing road network to Lumbermill
-5. Assign workers
+2. **For First Quest purposes, Lumbermill only needs to be PLACED** — "Connect buildings by road" and "Put workers to work" are already satisfied by the Farm. No road or worker assignment needed to complete the quest.
+3. Lumbermill needs flat GRASS adjacent to Forest tiles — scan with ghost to find a green position near the visible forest clusters
+4. (Optional, for production) Place road tile(s) from the existing road network to Lumbermill and assign workers
 
 ---
 
@@ -330,26 +350,32 @@ Steps:
 - **Example**: Hovering at the `+92` viewport y for tile (17,17) puts the ghost on tile (18,18). If (18,18) contains ROCKS the ghost is red, even though (17,17) was perfectly valid flat GRASS.
 - **Fix**: Use `worldY = (col+row)*16+60` (geometric origin, not sprite anchor) when computing the viewport y to hover over in **build or road mode**. Reserve `+92` for clicking on existing building sprites in **idle mode**. See the two separate formulas in the Coordinate System section above.
 
+### PITFALL 18: Farm field blocks can occupy your planned road tile
+- **Problem**: When Farm is placed, it immediately claims up to four 2×2 GRASS blocks in cardinal directions as field blocks. These tiles get `isField=true` and roads **cannot** be placed on them. If your planned road tile falls within a claimed field block, the placement silently fails (ghost shows green but click does nothing, or ghost shows red).
+- **Example**: Farm at (15,18) claimed a south field block anchored at (15,20), covering (15,20),(16,20),(15,21),(16,21). The road at (16,20) — adjacent to TH(17,20) — was blocked by the field. Road had to be moved to (17,19) instead (adjacent to TH(17,20) and Farm footprint tile (16,19)).
+- **Fix**: After placing Farm, read `building.fieldTiles` via JS to see which block anchors were claimed. Each anchor (col,row) represents a 2×2 block: (col,row),(col+1,row),(col,row+1),(col+1,row+1). Avoid those tiles for road placement. Roads adjacent *to* field tiles (not on them) still count for Farm connectivity.
+
 ---
 
 ## Efficient Run Checklist
 
 ```
 [ ] New Game → Pause immediately
-[ ] Calibrate scrollX/scrollY (click a tile, read TileInfoPanel)
+[ ] Calibrate scrollX/scrollY via JS: game.cameras.main.scrollX/scrollY
 [ ] Read TH button vpX/vpY from live game (buildingMenu._buttons['TOWN_HALL'])
 [ ] TH build mode: sweep mouse with {steps:15} to target, wait 100ms, verify ghost.tintTopLeft==='88ff88' via JS
 [ ] Verify Farm gap: 3+ tiles from TH anchor in one direction
-[ ] Place TH → Pause → confirm quest ✓ and Villagers=4
+[ ] Place TH → Pause → confirm via JS: questSystem.isTaskDone('buildTownHall') && villagerManager.total===4
 [ ] Read Farm button vpX/vpY from live game (menu reflows after TH — positions shift!)
 [ ] Farm build mode: sweep with {steps:15} to anchor, wait 100ms, verify green via JS
-[ ] Place Farm → Pause → confirm quest ✓
-[ ] Road mode: click tile between TH and Farm → confirm green road ghost
-[ ] Place road → verify Farm "No road connection" disappears
-[ ] Click Farm → VillagerPanel → [+] assign 2+ workers (need ceil(villagers/3) to break even on food)
-[ ] Wait 2–3s unpaused for villager to arrive before re-pausing
-[ ] Pause → confirm "Connect buildings" ✓ and "Put workers to work" ✓
-[ ] Lumbermill: find forest edge position, place, road, assign workers
+[ ] Place Farm → Pause → read building.fieldTiles to know which tiles are now farm fields
+[ ] Choose road tile NOT inside any field 2×2 block but adjacent to TH footprint AND farm footprint/field
+[ ] Road mode: sweep to road tile → confirm green ghost → place
+[ ] Verify Farm connected via JS: farmBuilding.isConnected === true
+[ ] Click Farm in idle mode → VillagerPanel → [+] assign workers (need ceil(villagers/3) to break even)
+[ ] Wait 2–3s unpaused for villager to arrive, then pause
+[ ] Confirm via JS: farmBuilding.assignedVillagers >= 1 (quest task fires on VILLAGERS_CHANGED)
+[ ] Lumbermill: scan ghost for green position near forest cluster → place (no road/workers needed for First Quest)
 ```
 
 ---
