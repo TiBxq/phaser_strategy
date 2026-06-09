@@ -15,26 +15,38 @@
 
 Constants (from MapRenderer.js): `TILE_W=64, TILE_H=32, ORIGIN_X=480, ORIGIN_Y=60, HEIGHT_STEP=16`
 
-**Tile → world (sprite anchor, for computing click targets):**
+**Tile → world (two variants — use the right one for the context):**
 ```
+// Sprite anchor (+92): where the building sprite is visually drawn
 world_x = (col - row) * 32 + 480
-world_y = (col + row) * 16 + 60 + 32 - height * 16
-         = (col + row) * 16 + 92            // height=0 (flat tiles)
-```
-The `+32` (TILE_H) is essential — it moves from the tile's geometric origin to the sprite anchor point. Omitting it gives coordinates ~32px too high, causing clicks to miss the building.
+world_y = (col + row) * 16 + 92            // height=0 (flat tiles)
 
-**Tile → viewport (use this to compute page.mouse.click targets):**
+// Geometric origin (+60): what Game.js pointermove uses to determine hovered tile
+world_x = (col - row) * 32 + 480
+world_y = (col + row) * 16 + 60            // height=0 (flat tiles)
+```
+
+**Tile → viewport for BUILD MODE ghost hover (use +60 geometric origin):**
 ```js
-// read from game at runtime:
-const cam = game.cameras.main;
-const ds = window.__game.scale.displayScale;   // { x: 0.9375, y: 0.9375 }
+const cam = game.scene.getScene('Game').cameras.main;
+const ds = window.__game.scale.displayScale;
 const rect = document.querySelector('canvas').getBoundingClientRect();
 
 const worldX = (col - row) * 32 + 480;
-const worldY = (col + row) * 16 + 92;          // +92 for flat tiles
+const worldY = (col + row) * 16 + 60;          // +60: geometric origin for ghost hover
 const vp_x = (worldX - cam.scrollX) / ds.x + rect.left;
 const vp_y = (worldY - cam.scrollY) / ds.y + rect.top;
 ```
+
+**Tile → viewport for IDLE MODE building selection (use +92 sprite anchor):**
+```js
+const worldX = (col - row) * 32 + 480;
+const worldY = (col + row) * 16 + 92;          // +92: sprite anchor to click on building
+const vp_x = (worldX - cam.scrollX) / ds.x + rect.left;
+const vp_y = (worldY - cam.scrollY) / ds.y + rect.top;
+```
+
+**Why two formulas?** Game.js `pointermove` in build mode calls `worldToTile(pointer.worldX, pointer.worldY)` using `+60` to identify the hovered tile, then positions the ghost at `tileToWorld(col, row)` using `+92`. So to make the ghost land on tile (col, row), you must hover at the `+60` position. Clicking on an *existing* building sprite in idle mode requires aiming at its visual center (closer to `+92`).
 
 **World → tile (for back-calculating tile from a world point):**
 ```
@@ -73,13 +85,32 @@ game_y = (clientY - rect.top)  * ds.y
 - **With 0 villagers: food consumption = 0, but starvation state persists — no recovery possible!**
 - **Total safe time from TH placement to Farm producing: ~100 seconds**
 
-### Building Menu Button Positions (bottom bar, ~y=800)
-- Town Hall: x ≈ 46
-- House: x ≈ 140
-- Farm: x ≈ 232  *(NOTE: locked until TH is placed)*
-- Lumbermill: x ≈ 325
-- Road: x ≈ rightmost ≈ 972
-- All buttons show "Needs: Town Hall" until TH is placed
+### Building Menu Button Positions (bottom bar)
+
+**⚠ Button positions shift when TH is placed.** The menu shows 11 buttons before TH placement and 10 after (TH disappears). Phaser reflows the remaining buttons with wider spacing (btnW 78→87 game px). Hardcoded x values become wrong by ~75px.
+
+**Always read button centers from the live game:**
+```js
+const ui = window.__game.scene.getScene('UI');
+const canvas = document.querySelector('canvas');
+const rect = canvas.getBoundingClientRect();
+const ds = window.__game.scale.displayScale;         // ds.x ≈ 0.9353
+const { btn } = ui.buildingMenu._buttons['FARM'];    // or 'LUMBERMILL', 'ROAD', etc.
+const btnW = 87;                                      // after TH placed; 78 before
+const centerGameX = btn.x + btnW / 2;                // btn.x is left edge (origin 0, 0.5)
+const vpX = Math.round(centerGameX / ds.x + rect.left);
+const vpY = Math.round(btn.y / ds.y + rect.top);
+```
+
+**Approximate values (before TH placed, 11 buttons):**
+- Town Hall: vpX ≈ 51, vpY ≈ 802
+- Farm: vpX ≈ 236, vpY ≈ 802
+- Road: vpX ≈ 930, vpY ≈ 802
+
+**Approximate values (after TH placed, 10 buttons, DIFFERENT):**
+- Farm: vpX ≈ 157, vpY ≈ 802
+- Lumbermill: vpX ≈ 259, vpY ≈ 802
+- Road: vpX ≈ 972, vpY ≈ 802
 
 ### Pause Button
 - Pause button: vp(1011, 160) — click to toggle pause
@@ -145,12 +176,33 @@ game_y = (clientY - rect.top)  * ds.y
 - Avoid right edge: if Farm anchor col + 1 ≥ 24 (col+1 > VIS_MAX), placement invalid
 
 ### Phase 3: Place TH (game paused is fine)
-1. Click TH button (x≈46, y≈800)
-2. `await page.mouse.move(vp_x, vp_y)` — hover at target anchor
-3. Take screenshot to confirm **GREEN building sprite** (not orange)
-4. `await page.mouse.click(vp_x, vp_y)` — place it
-5. **Pause immediately** after placement (`page.mouse.click(1011, 160)`)
-6. Take screenshot to confirm quest "Build a Town Hall" ✓ and Villagers shows 4
+
+**Correct placement pattern — use this for every building:**
+```js
+// 1. Read button center from live game state (see Button Positions section)
+await page.mouse.click(btnVpX, btnVpY);  // enter build mode
+
+// 2. Sweep to target with steps (like human mouse movement across tiles)
+await page.mouse.move(targetVpX, targetVpY, { steps: 15 });
+await page.waitForTimeout(100);          // let Phaser process pointermove events
+
+// 3. Verify ghost via JS — do NOT rely on screenshots for tint check
+const tint = await page.evaluate(() => {
+  const gh = window.__game.scene.getScene('Game').buildingRenderer._ghost;
+  return gh?.tintTopLeft?.toString(16);
+});
+if (tint !== '88ff88') { /* adjust target */ }
+
+// 4. Click to place
+await page.mouse.click(targetVpX, targetVpY);
+```
+
+Steps:
+1. Read TH button vpX/vpY from live game (see Button Positions section)
+2. Sweep to target anchor with `{ steps: 15 }`, wait 100ms, verify green via JS
+3. Click to place
+4. **Pause immediately** after placement (`page.mouse.click(1011, 160)`)
+5. Take screenshot to confirm quest "Build a Town Hall" ✓ and Villagers shows 4
 
 ### Phase 4: Enter Farm Mode and Find Farm Position
 **IMPORTANT: Farm mode is only available AFTER TH is placed**
@@ -260,6 +312,24 @@ game_y = (clientY - rect.top)  * ds.y
 - **Problem**: Farm produces 3 food/tick per worker. With 4 villagers consuming 4 food/tick, 1 worker (3 food/tick) still results in net -1/tick — food continues draining even with a worker assigned.
 - **Fix**: Assign at least `ceil(villagerCount / 3)` workers to Farm. With 4 villagers, assign **2 workers** (6 food/tick produced vs 4 consumed = net +2/tick). Always check the math before unpausing.
 
+### PITFALL 15: Building menu reflows when TH is placed — hardcoded button x breaks
+- **Problem**: The menu shows 11 buttons before TH placement. Once TH is placed it disappears, leaving 10 buttons. Phaser reflows with wider `btnW` (78→87 game px). Every button shifts left by ~75 viewport px. Clicking the old Farm x≈232 hits Lumbermill; old Lumbermill hits Quarry, etc.
+- **Fix**: Always read button positions from the live game via `ui.buildingMenu._buttons['FARM'].btn.x` (left edge in game px), add `btnW/2` for center, then convert with `/ ds.x + rect.left`. Never hardcode button x after TH placement.
+
+### PITFALL 16: Ghost doesn't update on first mouse.move if you read state immediately
+- **Problem**: After clicking the build button, calling `page.mouse.move(x, y)` dispatches a native `mousemove` event, but Phaser's `pointermove` listener runs in the game loop. Reading `ghost.x` via `page.evaluate` immediately after `mouse.move` (with no wait) catches the state before Phaser has processed the event. The ghost appears to be at its previous position or at world `(0,0)`, even though it will update correctly on the next frame.
+- **Root cause**: Humans naturally sweep the cursor from the UI button across game tiles to the target, firing many intermediate `pointermove` events before arriving. Automation jumps in one step, so the ghost may not reflect the final tile yet when read immediately.
+- **Fix**: Use `page.mouse.move(targetX, targetY, { steps: 15 })` to generate 15 intermediate `mousemove` events along the path (mirroring human movement), then `await page.waitForTimeout(100)` before reading ghost state. Never check ghost tint via screenshot alone — read `ghost.tintTopLeft.toString(16)` via JS evaluate after the wait.
+
+### PITFALL 17: Confusing the two "ds" values in viewport formulas
+- **Problem**: The guide uses `const ds = window.__game.scale.displayScale` which gives `ds.x ≈ 0.9353` (= gameWidth/cssWidth). The correct formula is `vp_x = worldX / ds.x`. If instead you compute `const ds = rect.width / 960 ≈ 1.0692` (the reciprocal) and also divide — `vp_x = worldX / 1.0692` — you get the wrong result (off by ~14%). The tile coordinate looks plausible but lands one tile away, producing a red ghost on valid terrain.
+- **Fix**: Either use `window.__game.scale.displayScale.x ≈ 0.9353` and divide, OR use `rect.width / 960 ≈ 1.0692` and multiply. The two are reciprocals. Be explicit about which you're using. The guide consistently uses displayScale (divide).
+
+### PITFALL 14: Using +92 worldY for build-mode ghost hover — ghost lands one tile too far
+- **Problem**: The guide's `worldY = (col+row)*16+92` formula gives the sprite *anchor* position. Hovering at that viewport coordinate causes `worldToTile(pointer.worldX, pointer.worldY)` — which uses `+60` internally — to resolve to tile `(col+1, row+1)`, one step further in col+row. The ghost appears on the wrong tile and may show orange (invalid) even though the intended tile is valid.
+- **Example**: Hovering at the `+92` viewport y for tile (17,17) puts the ghost on tile (18,18). If (18,18) contains ROCKS the ghost is red, even though (17,17) was perfectly valid flat GRASS.
+- **Fix**: Use `worldY = (col+row)*16+60` (geometric origin, not sprite anchor) when computing the viewport y to hover over in **build or road mode**. Reserve `+92` for clicking on existing building sprites in **idle mode**. See the two separate formulas in the Coordinate System section above.
+
 ---
 
 ## Efficient Run Checklist
@@ -267,10 +337,12 @@ game_y = (clientY - rect.top)  * ds.y
 ```
 [ ] New Game → Pause immediately
 [ ] Calibrate scrollX/scrollY (click a tile, read TileInfoPanel)
-[ ] TH build mode: find GREEN ghost → note anchor tile
+[ ] Read TH button vpX/vpY from live game (buildingMenu._buttons['TOWN_HALL'])
+[ ] TH build mode: sweep mouse with {steps:15} to target, wait 100ms, verify ghost.tintTopLeft==='88ff88' via JS
 [ ] Verify Farm gap: 3+ tiles from TH anchor in one direction
 [ ] Place TH → Pause → confirm quest ✓ and Villagers=4
-[ ] Farm build mode: hover to Farm anchor → confirm GREEN ghost
+[ ] Read Farm button vpX/vpY from live game (menu reflows after TH — positions shift!)
+[ ] Farm build mode: sweep with {steps:15} to anchor, wait 100ms, verify green via JS
 [ ] Place Farm → Pause → confirm quest ✓
 [ ] Road mode: click tile between TH and Farm → confirm green road ghost
 [ ] Place road → verify Farm "No road connection" disappears
