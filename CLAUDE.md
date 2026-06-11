@@ -152,7 +152,7 @@ All UI components are plain classes instantiated by `UI.js`. They use `setScroll
 
 `Game.js` tracks `this.inputMode = 'idle' | 'build' | 'road'` and `this.pendingBuildConfigId`.
 
-- **Idle**: Tile clicks → `TILE_SELECTED`. Clicking a building highlights its footprint + all claimed tiles; clicking a plain tile highlights just that tile.
+- **Idle**: Tile clicks → `TILE_SELECTED`. Clicking a building highlights its footprint + all claimed tiles; clicking a plain tile highlights just that tile. Right-click (also the start of a pan drag) deselects the current tile. Entering build or road mode also deselects.
 - **Build**: Left-click → `BUILD_PLACEMENT_REQUEST { configId, col, row }`. Right-click → `BUILD_MODE_EXIT`. `pointermove` updates ghost (building sprite + footprint overlays + claimable tile previews). Hover and selection highlights are suppressed.
 - **Road**: Left-click → `ROAD_PLACEMENT_REQUEST { col, row }`. Right-click → `ROAD_MODE_EXIT`. `pointermove` calls `mapRenderer.showRoadGhost(col, row, valid)` with green/red tint. Hover and selection highlights are suppressed.
 - **Camera pan**: Right-drag scrolls `cameras.main` within map bounds (only in idle mode).

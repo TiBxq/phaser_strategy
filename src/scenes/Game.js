@@ -121,6 +121,7 @@ export class Game extends Phaser.Scene {
 
         // ── Wire build events back from BuildSystem ────────────────────────────
         GameEvents.on(EventNames.BUILD_MODE_ENTER, ({ configId }) => {
+            if (this._selectedTile) GameEvents.emit(EventNames.TILE_DESELECTED);
             this.inputMode            = 'build';
             this.pendingBuildConfigId = configId;
             this.buildingRenderer.showGhost(configId);
@@ -133,6 +134,7 @@ export class Game extends Phaser.Scene {
         });
 
         GameEvents.on(EventNames.ROAD_MODE_ENTER, () => {
+            if (this._selectedTile) GameEvents.emit(EventNames.TILE_DESELECTED);
             this.inputMode = 'road';
             this.buildingRenderer.hideGhost();
         });
@@ -277,6 +279,7 @@ export class Game extends Phaser.Scene {
                     GameEvents.emit(EventNames.BUILD_MODE_EXIT);
                     return;
                 }
+                if (this._selectedTile) GameEvents.emit(EventNames.TILE_DESELECTED);
                 this._isPanning = true;
                 this._panStartX = pointer.x;
                 this._panStartY = pointer.y;
