@@ -39,6 +39,7 @@ export class CombatSystem {
         this._campDestroyed = false;
         this._campHp        = CAMP_STATS.maxHp;
         this._campBar       = null;
+        this._campBaseX     = null;
         this._claims        = new Map();   // warrior → "col,row" destination reservation
     }
 
@@ -414,10 +415,15 @@ export class CombatSystem {
     _campHitFeedback(dmg) {
         const sprite = this._banditRenderer.campSprite;
         if (sprite?.active) {
+            // Overlapping shakes capture a mid-shake x as their rest position and
+            // drift the sprite over time — anchor every shake to the original x.
+            if (this._campBaseX === null) this._campBaseX = sprite.x;
+            this._scene.tweens.killTweensOf(sprite);
+            sprite.x = this._campBaseX;
             spawnDamageFloat(this._scene, sprite.x, sprite.y - 96, dmg);
             this._scene.tweens.add({
                 targets: sprite,
-                x: sprite.x + 3,
+                x: this._campBaseX + 3,
                 duration: 40,
                 yoyo: true,
                 repeat: 2,
