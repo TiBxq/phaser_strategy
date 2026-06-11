@@ -90,7 +90,10 @@ export class CombatSystem {
         if (!isWalkable(this._tileMap.getTile(col, row))) return false;
         if (this._isCampFootprint(col, row)) return false;
         for (const b of this._banditRenderer.bandits) {
-            if (!b.combat.isDead && b.col === col && b.row === row) return false;
+            if (b.combat.isDead) continue;
+            if (b.col === col && b.row === row) return false;
+            // A relocating bandit's destination is reserved too
+            if (b._relocTarget && b._relocTarget.col === col && b._relocTarget.row === row) return false;
         }
         const key = `${col},${row}`;
         for (const w of this._warriorRenderer.allWarriors()) {
@@ -101,13 +104,25 @@ export class CombatSystem {
         return true;
     }
 
-    /** Move stacked or footprint-standing bandits to a free nearby tile. */
+    /** True when (col, row) is reserved or occupied by a warrior. */
+    _isWarriorTile(col, row) {
+        const key = `${col},${row}`;
+        for (const w of this._warriorRenderer.allWarriors()) {
+            if (w.combat.isDead) continue;
+            if (!w._marching && w.col === col && w.row === row) return true;
+            if (this._claims.get(w) === key) return true;
+        }
+        return false;
+    }
+
+    /** Move stacked, footprint-standing, or warrior-tile bandits to a free nearby tile. */
     _destackBandits() {
         const taken = new Set();
         for (const b of this._banditRenderer.bandits) {
             if (b.combat.isDead) continue;
             const key = `${b.col},${b.row}`;
-            if (!this._isCampFootprint(b.col, b.row) && !taken.has(key)) {
+            if (!this._isCampFootprint(b.col, b.row) && !taken.has(key)
+                && !this._isWarriorTile(b.col, b.row)) {
                 taken.add(key);
                 continue;
             }
@@ -179,10 +194,12 @@ export class CombatSystem {
         return best;
     }
 
-    /** March to a free tile adjacent to the bandit — never onto its own tile. */
+    /** March to a free tile adjacent to the bandit — never onto its own tile.
+     *  The (+1,+1)/(−1,−1) diagonals are excluded: in the isometric projection
+     *  they render almost on top of the bandit, making the duel look stacked. */
     _approach(w, bandit, retries) {
         const spots = [];
-        for (const [dc, dr] of [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]]) {
+        for (const [dc, dr] of [[0,-1],[-1,0],[1,0],[0,1],[1,-1],[-1,1]]) {
             const c = bandit.col + dc, r = bandit.row + dr;
             if (this._isStandFree(c, r, w)) spots.push({ col: c, row: r });
         }
@@ -201,11 +218,12 @@ export class CombatSystem {
                     return;
                 }
                 const dist = Math.max(Math.abs(bandit.col - w.col), Math.abs(bandit.row - w.row));
-                if (dist <= ENGAGE_RANGE) {
+                if (dist >= 1 && dist <= ENGAGE_RANGE) {
                     w._unreachable.clear();
                     this._startDuel(w, bandit);
                 } else if (retries < APPROACH_RETRIES) {
-                    // Bandit relocated mid-march — re-approach its new position
+                    // dist 0: the bandit ended its last wander step under the warrior —
+                    // step off to an adjacent spot. dist > 1: it relocated mid-march.
                     this._approach(w, bandit, retries + 1);
                 } else {
                     this._giveUpOnBandit(w, bandit);

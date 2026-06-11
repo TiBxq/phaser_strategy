@@ -46,10 +46,11 @@ export class BanditEntity {
             .setDepth(baseDepth + LAYER_VILLAGER);
         this._sprite.play('orc-idle');
 
-        this.combat      = new Combatant(scene, this, BANDIT_STATS);
-        this._held       = false;
-        this._engagedBy  = null;
-        this._onWalkDone = null;
+        this.combat       = new Combatant(scene, this, BANDIT_STATS);
+        this._held        = false;
+        this._engagedBy   = null;
+        this._onWalkDone  = null;
+        this._relocTarget = null;
 
         this.refreshFogVisibility();
         this._scheduleWander();
@@ -82,10 +83,11 @@ export class BanditEntity {
             heightMoveCost,
         );
         if (path.length < 2) { this._held = true; return; }
-        this._held       = false;
-        this._onWalkDone = () => { this._held = true; };
-        this._path       = path;
-        this._pathStep   = 1;
+        this._held        = false;
+        this._relocTarget = { col, row };
+        this._onWalkDone  = () => { this._held = true; this._relocTarget = null; };
+        this._path        = path;
+        this._pathStep    = 1;
         this._walkStep();
     }
 
