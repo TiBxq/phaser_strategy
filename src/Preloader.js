@@ -62,6 +62,9 @@ export class Preloader extends Phaser.Scene {
         // SFX
         this.load.audio('sfx-build',   'assets/sfx/build.wav');
         this.load.audio('sfx-destroy', 'assets/sfx/destroy.wav');
+        // Combat SFX — optional files; playback is cache-guarded (playSfx in Combatant.js)
+        this.load.audio('sfx-hit',   'assets/sfx/hit.wav');
+        this.load.audio('sfx-death', 'assets/sfx/death.wav');
 
         this._generateUITextures();
     }

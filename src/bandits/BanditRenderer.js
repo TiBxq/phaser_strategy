@@ -33,6 +33,24 @@ export class BanditRenderer {
     clearCamp() {
         for (const b of this._bandits) b.destroy();
         this._bandits = [];
+        this.destroyCampSprite();
+    }
+
+    /** Alive-or-dying bandit entities (combat reads/locks targets on these). */
+    get bandits() { return this._bandits; }
+
+    /** The camp building sprite (for hit feedback / HP bar anchoring). */
+    get campSprite() { return this._campSprite; }
+
+    /** Remove and destroy a single bandit (after its death animation). */
+    removeBandit(entity) {
+        const idx = this._bandits.indexOf(entity);
+        if (idx !== -1) this._bandits.splice(idx, 1);
+        entity.destroy();
+    }
+
+    /** Destroy only the camp sprite (combat kills the bandits individually). */
+    destroyCampSprite() {
         if (this._campSprite) { this._campSprite.destroy(); this._campSprite = null; }
     }
 
@@ -62,11 +80,17 @@ export class BanditRenderer {
 
     _spawnBandits() {
         const { campCol, campRow } = this._banditCampSystem;
+        const used = new Set();
 
         for (let i = 0; i < BANDIT_COUNT; i++) {
-            const tile = randomWalkableTileNear(this._tileMap, campCol, campRow, SPAWN_RADIUS)
-                      ?? randomWalkableTile(this._tileMap);
+            let tile = null;
+            for (let attempt = 0; attempt < 10 && !tile; attempt++) {
+                const t = randomWalkableTileNear(this._tileMap, campCol, campRow, SPAWN_RADIUS)
+                       ?? randomWalkableTile(this._tileMap);
+                if (t && !used.has(`${t.col},${t.row}`)) tile = t;
+            }
             if (!tile) continue;
+            used.add(`${tile.col},${tile.row}`);
             this._bandits.push(new BanditEntity(
                 this._scene, this._tileMap,
                 tile.col, tile.row,

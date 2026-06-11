@@ -3,6 +3,8 @@ import { tileToWorld, TILE_H } from '../map/MapRenderer.js';
 import { aStar } from '../pathfinding/AStar.js';
 import { isWalkable, isWalkableForMarch, marchMoveCost, randomWalkableTileNear, heightMoveCost } from '../villagers/walkable.js';
 import { LAYER_VILLAGER, LAYER_SHADOW, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
+import { Combatant } from '../combat/Combatant.js';
+import { WARRIOR_STATS } from '../data/CombatConfig.js';
 
 const MOVE_DURATION    = 600;
 const IDLE_MIN_MS      = 800;
@@ -49,15 +51,32 @@ export class WarriorEntity {
             .setDepth(baseDepth + LAYER_VILLAGER);
         this._sprite.play('soldier-idle');
 
+        this.combat = new Combatant(scene, this, WARRIOR_STATS, { baseTint: WARRIOR_TINT });
+
         this._scheduleWander();
     }
 
     destroy() {
         if (this._wanderTimer) { this._wanderTimer.remove(); this._wanderTimer = null; }
+        this.combat.destroy();
         this._scene.tweens.killTweensOf(this._sprite);
         this._scene.tweens.killTweensOf(this._shadow);
         this._sprite.destroy();
         this._shadow.destroy();
+    }
+
+    /** Face (targetCol, targetRow) and play one attack swing, then return to idle. */
+    playAttackSwing(targetCol, targetRow) {
+        if (this.combat.isDead) return;
+        const dx = (targetCol - this.col) - (targetRow - this.row);
+        if (dx !== 0) this._sprite.setFlipX(dx < 0);
+        const key = Math.random() < 0.5 ? 'soldier-attack01' : 'soldier-attack02';
+        this._sprite.play(key);
+        this._sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+            if (!this.combat.isDead && !this._isWalking && this._sprite.active) {
+                this._sprite.play('soldier-idle');
+            }
+        });
     }
 
     // ── March API ──────────────────────────────────────────────────────────────
@@ -111,6 +130,53 @@ export class WarriorEntity {
         this._walkStep();
     }
 
+    /**
+     * March to one exact tile (combat positioning — no building-offset search).
+     * Returns true when a path was found (or the warrior is already there);
+     * returns false WITHOUT calling onArrived when the tile is unreachable.
+     */
+    marchToTile(targetCol, targetRow, onArrived) {
+        if (this._wanderTimer) { this._wanderTimer.remove(); this._wanderTimer = null; }
+        this._scene.tweens.killTweensOf(this._sprite);
+        this._scene.tweens.killTweensOf(this._shadow);
+
+        const currTile = this._tileMap.getTile(this.col, this.row);
+        const currH    = currTile ? currTile.height : 0;
+        const { x, y } = tileToWorld(this.col, this.row, currH);
+        const spriteY  = y - TILE_H + SOLDIER_Y_ADJUST;
+        this._sprite.setPosition(x, spriteY);
+        this._shadow.setPosition(x, spriteY);
+        this._marching      = false;
+        this._marchCallback = null;
+        this._path          = [];
+        this._pathStep      = 0;
+
+        if (this.col === targetCol && this.row === targetRow) {
+            if (this._isWalking) {
+                this._isWalking = false;
+                this._sprite.play('soldier-idle');
+            }
+            if (onArrived) onArrived();
+            return true;
+        }
+
+        const path = aStar(
+            this._tileMap,
+            { col: this.col, row: this.row },
+            { col: targetCol, row: targetRow },
+            isWalkableForMarch,
+            marchMoveCost,
+        );
+        if (path.length < 2) return false;
+
+        this._marching      = true;
+        this._marchCallback = onArrived;
+        this._path          = path;
+        this._pathStep      = 1;
+        this._walkStep();
+        return true;
+    }
+
     marchHome() {
         this.marchTo(this._homeCol, this._homeRow, () => {
             this._marching = false;
@@ -125,7 +191,7 @@ export class WarriorEntity {
     // ── Internal ──────────────────────────────────────────────────────────────
 
     _scheduleWander() {
-        if (this._marching) return;
+        if (this._marching || this.combat.inCombat || this.combat.isDead) return;
         this._wanderTimer = this._scene.time.delayedCall(
             Phaser.Math.Between(IDLE_MIN_MS, IDLE_MAX_MS),
             () => this._startWander(0),
@@ -133,7 +199,7 @@ export class WarriorEntity {
     }
 
     _startWander(retries) {
-        if (this._marching) return;
+        if (this._marching || this.combat.inCombat || this.combat.isDead) return;
         if (retries >= MAX_RETRIES) { this._scheduleWander(); return; }
 
         const dest = randomWalkableTileNear(this._tileMap, this._homeCol, this._homeRow, WANDER_RADIUS);

@@ -99,6 +99,20 @@ export class VillagerManager {
     }
 
     /**
+     * A warrior assigned to `buildingUid` died in combat — permanent loss.
+     * Decrements the assignment and the total without returning anyone to the pool.
+     */
+    killAssigned(buildingUid, buildSystem) {
+        const current = this.assignments.get(buildingUid) ?? 0;
+        if (current <= 0) return;
+        this.assignments.set(buildingUid, current - 1);
+        this.total = Math.max(0, this.total - 1);
+        const building = buildSystem?.getBuilding(buildingUid);
+        if (building) building.assignedVillagers = current - 1;
+        this._emit();
+    }
+
+    /**
      * Reserve one worker slot for a building (in-transit state).
      * Decrements unassigned immediately but does NOT start production — call confirmWorker on arrival.
      */

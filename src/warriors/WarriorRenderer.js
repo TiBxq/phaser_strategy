@@ -25,7 +25,12 @@ export class WarriorRenderer {
                 GameEvents.emit(EventNames.WARRIOR_RECALLED, { buildingUid });
                 return;
             }
-            const warrior = pool.pop();
+            // Prefer recalling a warrior that is not currently fighting
+            let idx = pool.length - 1;
+            for (let i = pool.length - 1; i >= 0; i--) {
+                if (!pool[i].combat.inCombat) { idx = i; break; }
+            }
+            const [warrior] = pool.splice(idx, 1);
             warrior.marchTo(warrior._homeCol, warrior._homeRow, () => {
                 warrior.destroy();
                 GameEvents.emit(EventNames.WARRIOR_RECALLED, { buildingUid });
@@ -66,6 +71,32 @@ export class WarriorRenderer {
         if (!pool) return;
         for (const entity of pool) entity.destroy();
         this._pools.delete(uid);
+    }
+
+    // ── Combat API ─────────────────────────────────────────────────────────────
+
+    /** All warrior entities across every Barracks pool. */
+    allWarriors() {
+        const all = [];
+        for (const pool of this._pools.values()) all.push(...pool);
+        return all;
+    }
+
+    /** The Barracks uid owning this entity, or null. */
+    findPoolUid(entity) {
+        for (const [uid, pool] of this._pools) {
+            if (pool.includes(entity)) return uid;
+        }
+        return null;
+    }
+
+    /** Remove a dead warrior from its pool WITHOUT destroying it
+     *  (the death animation owns the sprite until it finishes). */
+    removeEntity(entity) {
+        for (const pool of this._pools.values()) {
+            const idx = pool.indexOf(entity);
+            if (idx !== -1) { pool.splice(idx, 1); return; }
+        }
     }
 
     // ── March API ──────────────────────────────────────────────────────────────

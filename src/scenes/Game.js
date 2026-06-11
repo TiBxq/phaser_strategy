@@ -18,6 +18,7 @@ import { FogOfWarSystem, VIS_MIN, VIS_MAX } from '../systems/FogOfWarSystem.js';
 import { BanditCampSystem } from '../systems/BanditCampSystem.js';
 import { BanditThreatSystem } from '../systems/BanditThreatSystem.js';
 import { BanditRenderer } from '../bandits/BanditRenderer.js';
+import { CombatSystem } from '../combat/CombatSystem.js';
 import { CritterRenderer } from '../critters/CritterRenderer.js';
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
@@ -77,6 +78,32 @@ export class Game extends Phaser.Scene {
         this.banditRenderer   = new BanditRenderer(this, this.tileMap, this.banditCampSystem, this.fogOfWarSystem);
         this.critterRenderer  = new CritterRenderer(this, this.tileMap, this.fogOfWarSystem, this.villagerRenderer);
         this.floatingLabels   = new FloatingLabels(this);
+
+        this.combatSystem = new CombatSystem(this, {
+            tileMap:          this.tileMap,
+            warriorRenderer:  this.warriorRenderer,
+            banditRenderer:   this.banditRenderer,
+            banditCampSystem: this.banditCampSystem,
+            buildSystem:      this.buildSystem,
+            villagerManager:  this.villagerManager,
+            fogSystem:        this.fogOfWarSystem,
+        });
+
+        // Dev/testing cheat: spawn a warrior squad near the bandit camp and start
+        // the assault immediately, skipping the economic buildup.
+        // Usage from the browser console: __combatTest(5)
+        window.__combatTest = (count = 5) => {
+            const { campCol, campRow } = this.banditCampSystem;
+            if (campCol === null) return 'no bandit camp on this map';
+            const stageCol = Math.min(campCol + 7, MAP_SIZE - 2);
+            const stageRow = Math.min(campRow + 7, MAP_SIZE - 2);
+            this.fogOfWarSystem.revealAround(stageCol, stageRow, 3);
+            this.warriorRenderer._syncPool('__CHEAT__', {
+                col: stageCol, row: stageRow, assignedVillagers: count,
+            });
+            this.combatSystem.startAssault();
+            return `assault started with ${count} warriors from (${stageCol}, ${stageRow})`;
+        };
 
         // ── Music ──────────────────────────────────────────────────────────────
         this.sound.play('music-ambient', { loop: true, volume: 0.6 });
