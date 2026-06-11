@@ -9,6 +9,10 @@ import { playSfx, spawnDamageFloat } from './Combatant.js';
 import { isWalkable } from '../villagers/walkable.js';
 
 const APPROACH_RETRIES = 3;
+// Damage lands mid-swing (HIT_IMPACT_MS into a ~750 ms attack animation).
+// Reassigning the winner right at impact would cut the swing into a walk —
+// wait out the follow-through before marching anywhere.
+const SWING_FOLLOW_THROUGH_MS = 500;
 const RING_WAIT_RETRIES = 10;   // waiting for a camp perimeter spot to free up
 const DESTACK_DELAY_MS  = 1000; // let held bandits finish their current step first
 const UNREACHABLE_TTL_MS = 8000; // failed-path marks expire so bandits get retried
@@ -285,7 +289,9 @@ export class CombatSystem {
         const loserIsBandit = this._banditRenderer.bandits.includes(loser);
         if (loserIsBandit) {
             winner._combatTarget = null;
-            this._assignTargets();
+            this._scene.time.delayedCall(SWING_FOLLOW_THROUGH_MS, () => {
+                if (this._active) this._assignTargets();
+            });
         } else {
             this._onWarriorDied(loser);
             winner._engagedBy = null;
@@ -478,8 +484,12 @@ export class CombatSystem {
             w.combat.inCombat = false;
             w._combatTarget   = null;
             w._attackingCamp  = false;
-            w.marchHome();
         }
+        this._scene.time.delayedCall(SWING_FOLLOW_THROUGH_MS, () => {
+            for (const w of this._warriorRenderer.allWarriors()) {
+                if (!w.combat.isDead) w.marchHome();
+            }
+        });
     }
 
     _failAssault() {
