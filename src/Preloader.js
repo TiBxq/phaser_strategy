@@ -82,6 +82,7 @@ export class Preloader extends Phaser.Scene {
         this._generateNoRoadIcon();
         this._generateStarvationIcon();
         this._generatePillageIcon();
+        this._generateMouseRightIcon();
         this._generateNoWorkersIcon();
         this._generateDepletedIcon();
         this._generateIconTextures();
@@ -432,6 +433,29 @@ export class Preloader extends Phaser.Scene {
         g.fillRect(cx - 1.5, 13, 3, 3);   // dot
 
         g.generateTexture('icon-starving', S, S);
+        g.destroy();
+    }
+
+    _generateMouseRightIcon() {
+        const W = 18;
+        const H = 24;
+        const g = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Mouse body — dark fill
+        g.fillStyle(0x222233, 1);
+        g.fillRoundedRect(1, 1, 16, 22, 7);
+
+        // Right button highlighted (top-right quadrant)
+        g.fillStyle(0xffcc44, 1);
+        g.fillRoundedRect(9, 1, 8, 10, { tl: 0, tr: 7, bl: 0, br: 0 });
+
+        // Outline + button dividers
+        g.lineStyle(1.5, 0xddddee, 1);
+        g.strokeRoundedRect(1, 1, 16, 22, 7);
+        g.lineBetween(9, 1, 9, 11);    // vertical split between buttons
+        g.lineBetween(1, 11, 17, 11);  // bottom edge of the buttons
+
+        g.generateTexture('icon-mouse-right', W, H);
         g.destroy();
     }
 

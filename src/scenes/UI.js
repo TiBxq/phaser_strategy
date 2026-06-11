@@ -8,6 +8,7 @@ import { NotificationManager } from '../ui/NotificationManager.js';
 import { HungerAlert } from '../ui/HungerAlert.js';
 import { BanditAlert } from '../ui/BanditAlert.js';
 import { QuestPanel } from '../ui/QuestPanel.js';
+import { CameraHint } from '../ui/CameraHint.js';
 import { ComingSoonScreen } from '../ui/ComingSoonScreen.js';
 import { PauseMenu } from '../ui/PauseMenu.js';
 import { GameEvents } from '../events/GameEvents.js';
@@ -31,6 +32,7 @@ export class UI extends Phaser.Scene {
         this.hungerAlert   = new HungerAlert(this);
         this.banditAlert   = new BanditAlert(this);
         this.questPanel       = new QuestPanel(this, gameScene.questSystem);
+        this.cameraHint       = new CameraHint(this);
         this.comingSoonScreen = new ComingSoonScreen(this);
         this.pauseMenu        = new PauseMenu(this);
 

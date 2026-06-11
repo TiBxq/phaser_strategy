@@ -338,8 +338,15 @@ export class Game extends Phaser.Scene {
             }
         });
 
-        this.input.on('pointerup', () => {
-            this._isPanning = false;
+        this.input.on('pointerup', (pointer) => {
+            if (this._isPanning) {
+                this._isPanning = false;
+                const dx = pointer.x - this._panStartX;
+                const dy = pointer.y - this._panStartY;
+                if (Math.abs(dx) + Math.abs(dy) > 30) {
+                    GameEvents.emit(EventNames.CAMERA_PANNED);
+                }
+            }
         });
 
         // Tile selection wired through tile sprites in MapRenderer.

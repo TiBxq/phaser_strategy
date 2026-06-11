@@ -145,6 +145,9 @@ export const EventNames = Object.freeze({
     // WarriorRenderer signals that a recalled warrior has arrived home — payload: { buildingUid }
     WARRIOR_RECALLED: 'warrior:recalled',
 
+    // Player completed a right-drag camera pan (moved beyond a small threshold)
+    CAMERA_PANNED: 'camera:panned',
+
     // Player paused the game
     GAME_PAUSED: 'game:paused',
 
