@@ -23,6 +23,17 @@ export class FogOfWarSystem {
         this._initialize();
     }
 
+    // ─── Save / load ───────────────────────────────────────────────────────────
+
+    toJSON() {
+        return Array.from(this._fog);
+    }
+
+    /** Overwrites the constructor's initial visibility — MapRenderer repaints via updateAllFog(). */
+    fromJSON(data) {
+        this._fog = Uint8Array.from(data);
+    }
+
     // ─── Public API ────────────────────────────────────────────────────────────
 
     /** Returns the fog state for a tile. Out-of-bounds positions return FOG_HIDDEN. */

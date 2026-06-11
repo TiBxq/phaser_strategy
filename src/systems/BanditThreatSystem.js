@@ -44,6 +44,33 @@ export class BanditThreatSystem {
 
     getState() { return this._state; }
 
+    /** Current pillage target uid, or null (used by save system and UI restore). */
+    getPillageTargetUid() { return this._pillageTargetUid; }
+
+    /** Public steal-tier accessor for UI re-emission after load. */
+    getStealAmount() { return this._getStealAmount(); }
+
+    toJSON() {
+        return {
+            state:            this._state,
+            triggered:        this._triggered,
+            zeroMoneyCycles:  this._zeroMoneyCycles,
+            pillageCounter:   this._pillageCounter,
+            pillageTargetUid: this._pillageTargetUid,
+            lastStealAmount:  this._lastStealAmount,
+        };
+    }
+
+    /** Silent restore — UI.create() re-emits BANDIT_THREAT_STATE_CHANGED at its end. */
+    fromJSON(data) {
+        this._state            = data.state;
+        this._triggered        = data.triggered;
+        this._zeroMoneyCycles  = data.zeroMoneyCycles;
+        this._pillageCounter   = data.pillageCounter;
+        this._pillageTargetUid = data.pillageTargetUid;
+        this._lastStealAmount  = data.lastStealAmount;
+    }
+
     // ── Private ──────────────────────────────────────────────────────────────────
 
     _onTick() {

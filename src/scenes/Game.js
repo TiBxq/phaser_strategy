@@ -24,13 +24,24 @@ import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 import { MAP_SIZE } from '../map/TileMap.js';
+import { SaveManager } from '../save/SaveManager.js';
+
+const AUTOSAVE_INTERVAL_MS = 60_000;
 
 export class Game extends Phaser.Scene {
     constructor() {
         super('Game');
     }
 
+    init(data) {
+        this._loadSave = !!data?.loadSave;
+    }
+
     create() {
+        // Falls back to a fresh game when the save is missing or corrupt
+        const snapshot = this._loadSave ? SaveManager.load() : null;
+        this.loadedSnapshot = snapshot;   // read by UI.create (building unlock latch)
+
         // ── Systems ────────────────────────────────────────────────────────────
         this.resourceSystem  = new ResourceSystem();
         this.buildSystem     = new BuildSystem(this.resourceSystem);
@@ -42,7 +53,9 @@ export class Game extends Phaser.Scene {
         this.villagerManager = new VillagerManager();
 
         // ── Map ────────────────────────────────────────────────────────────────
-        this.tileMap         = new TileMap().generate();
+        this.tileMap = new TileMap();
+        if (snapshot) this.tileMap.fromJSON(snapshot.map);
+        else          this.tileMap.generate();
 
         this.productionSystem = new ProductionSystem(
             this.time,
@@ -70,6 +83,10 @@ export class Game extends Phaser.Scene {
             this.tileMap,
         );
 
+        // Hydrate all pure-state systems BEFORE any renderer exists — MapRenderer
+        // and BanditRenderer self-initialize from system state at construction.
+        if (snapshot) SaveManager.hydrateSystems(this, snapshot);
+
         this.mapRenderer      = new MapRenderer(this, this.tileMap);
         this.mapRenderer.setFogSystem(this.fogOfWarSystem);
         this.buildingRenderer = new BuildingRenderer(this, this.tileMap, this.buildSystem);
@@ -88,6 +105,12 @@ export class Game extends Phaser.Scene {
             villagerManager:  this.villagerManager,
             fogSystem:        this.fogOfWarSystem,
         });
+
+        if (snapshot) {
+            this.combatSystem.hydrate(snapshot.combat);
+            // Rebuild the event-driven renderers (buildings, villagers, warriors)
+            SaveManager.syncRenderers(this);
+        }
 
         // Dev/testing cheat: spawn a warrior squad near the bandit camp and start
         // the assault immediately, skipping the economic buildup.
@@ -111,6 +134,17 @@ export class Game extends Phaser.Scene {
         // ── Camera ─────────────────────────────────────────────────────────────
         this.cameras.main.setBackgroundColor('#080820');
         this._setupCamera();
+        if (snapshot?.camera) {
+            this.cameras.main.setScroll(snapshot.camera.scrollX, snapshot.camera.scrollY);
+        }
+
+        // ── Autosave ───────────────────────────────────────────────────────────
+        // Scene-clock timer: automatically paused while the game is paused.
+        this.time.addEvent({
+            delay:    AUTOSAVE_INTERVAL_MS,
+            loop:     true,
+            callback: () => this._autoSave(),
+        });
 
         // ── Input ──────────────────────────────────────────────────────────────
         this.inputMode           = 'idle';   // 'idle' | 'build' | 'road'
@@ -214,6 +248,16 @@ export class Game extends Phaser.Scene {
 
         // ── Launch UI in parallel ──────────────────────────────────────────────
         this.scene.launch('UI');
+    }
+
+    // ─── Save ──────────────────────────────────────────────────────────────────
+
+    _autoSave() {
+        // Mid-assault state is transient and not serializable — wait for the next cycle
+        if (this.combatSystem.isActive) return;
+        if (SaveManager.save(this)) {
+            GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: 'Game saved' });
+        }
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { SaveManager } from '../save/SaveManager.js';
 
 const W = 960;
 const H = 640;
@@ -31,20 +32,38 @@ export class Menu extends Phaser.Scene {
             color:      '#8899aa',
         }).setOrigin(0.5);
 
-        // New Game button
-        const btnX = W / 2;
-        const btnY = H / 2 + 50;
+        // Buttons: Continue (when a save exists) above New Game
+        const btnX    = W / 2;
+        const hasSave = SaveManager.hasSave();
 
-        const btn = this.add.image(btnX, btnY, 'btn-normal')
+        if (hasSave) {
+            this._addButton(btnX, H / 2 + 40, 'Continue', () => {
+                this.scene.start('Game', { loadSave: true });
+            });
+            this._addButton(btnX, H / 2 + 95, 'New Game', () => {
+                SaveManager.clear();
+                this.scene.start('Game');
+            });
+        } else {
+            this._addButton(btnX, H / 2 + 50, 'New Game', () => {
+                this.scene.start('Game');
+            });
+        }
+    }
+
+    _addButton(x, y, label, onClick) {
+        const btn = this.add.image(x, y, 'btn-normal')
             .setInteractive({ useHandCursor: true })
             .on('pointerover',  () => btn.setTexture('btn-hover'))
             .on('pointerout',   () => btn.setTexture('btn-normal'))
-            .on('pointerdown',  () => this.scene.start('Game'));
+            .on('pointerdown',  onClick);
 
-        this.add.text(btnX, btnY, 'New Game', {
+        this.add.text(x, y, label, {
             fontFamily: 'monospace',
             fontSize:   '14px',
             color:      '#ffffff',
         }).setOrigin(0.5);
+
+        return btn;
     }
 }

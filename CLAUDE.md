@@ -20,11 +20,12 @@ This is a browser-based **isometric economic strategy game** built with Phaser *
 ### Scene Flow
 
 ```
-Preloader  →  Game  +  UI  (parallel, launched via scene.launch)
+Preloader  →  Menu  →  Game  +  UI  (parallel, launched via scene.launch)
 ```
 
-- **`Preloader.js`**: Generates all textures programmatically (`generateTexture()`), then starts `Game`.
-- **`scenes/Game.js`**: Instantiates all systems, generates the map, sets up renderers, wires input, and launches `UI` in parallel.
+- **`Preloader.js`**: Generates all textures programmatically (`generateTexture()`), then starts `Menu`.
+- **`scenes/Menu.js`**: Title screen. Shows **New Game** only, or **Continue** + **New Game** when `SaveManager.hasSave()`. Continue → `scene.start('Game', { loadSave: true })`; New Game → `SaveManager.clear()` then a fresh start.
+- **`scenes/Game.js`**: Instantiates all systems, generates the map (or hydrates a saved one — see Save System), sets up renderers, wires input, and launches `UI` in parallel.
 - **`scenes/UI.js`**: Reads system references from `this.scene.get('Game')` and creates all HUD components.
 
 ### Event System
@@ -255,6 +256,15 @@ All UI components are plain classes instantiated by `UI.js`. They use `setScroll
 - **Camera start**: `Game.js` derives the initial camera center from `Math.round((VIS_MIN + VIS_MAX) / 2)` so it always starts centered on the visible region regardless of `VIS_MIN`/`VIS_MAX` values.
 - **Event**: `FOG_UPDATED { changes: Array<{ col, row, state }> }` — emitted by `FogOfWarSystem.revealAround()` after each reveal; `MapRenderer` subscribes and calls `refreshFogTile` for each changed tile.
 - **Depth note**: fog is implemented purely via `setVisible` / `setTint` on the base tile sprite — no overlay sprites. This avoids isometric depth-sorting issues where overlay sprites at depth `col+row+N` would incorrectly cover neighboring visible tiles that share screen space.
+
+### Save System
+
+- **`src/save/SaveManager.js`**: single-slot persistence in `localStorage` under `homestead-frontier.save`, versioned JSON envelope (`SAVE_VERSION = 1`). Public API: `hasSave()`, `load()` (null on missing/corrupt/version-mismatch — also clears the bad blob), `clear()`, `save(gameScene)` → bool, `hydrateSystems(gameScene, snapshot)`, `syncRenderers(gameScene)`. SaveManager never reaches into private fields — serialization lives as `toJSON()`/`fromJSON(data)` on each system: `TileMap`, `ResourceSystem`, `BuildSystem`, `VillagerManager`, `RoadSystem`, `FogOfWarSystem`, `QuestSystem`, `HungerSystem`, `BanditCampSystem`, `BanditThreatSystem` (+ `CombatSystem.hydrate({ campHp })` / `get campHp`).
+- **Envelope sections**: `camera` (scroll), `map` (full tile grid + camp position), `resources`, `buildings` (`nextUid` + full building records with `pendingWorkers` forced to 0), `villagers` (in-transit `pendingWorkers` are folded back into `unassigned` at save time — marches are cancelled, no villager leak), `roads`, `fog` (Uint8Array → plain array), `quests`, `hunger`, `banditCamp` (claimed tiles saved from the **system**, not the map — `clear()` leaves `tileMap.banditClaimedTiles` stale), `banditThreat`, `combat` (`campHp`), `ui` (`everPlaced` build-menu unlock latch — not derivable from `placedBuildings` because demolished prerequisites stay unlocked — and `cameraHintDismissed` so the pan hint never re-shows after the player dismissed it).
+- **Load order in `Game.create()`** (critical): systems constructed unchanged → `tileMap.fromJSON()` instead of `generate()` → `SaveManager.hydrateSystems()` **before any renderer** (quests hydrate last; `QuestSystem.fromJSON` must NOT call `_startQuest()` — it emits `QUEST_STARTED` directly so `QuestHintSystem` refreshes) → renderers constructed unchanged (`MapRenderer`/`BanditRenderer` self-initialize from hydrated state) → `combatSystem.hydrate()` → `SaveManager.syncRenderers()` (`buildingRenderer.syncFromState()` — sprites without placement effects via `_addBuilding(b, { animate: false })`; `villagerRenderer.hydrateStationed()` — invisible stationed entities per assignment; `villagerManager.notifyChanged()` — free wanderers; `WARRIORS_CHANGED` per staffed Barracks; `BANDIT_PILLAGE_TARGET` re-emit) → camera scroll restored after `_setupCamera()`.
+- **`UI.create()` tail re-emissions** (no-ops for default states, restore HUD after load): `RESOURCES_CHANGED`, `villagerManager.notifyChanged()`, `HUNGER_STATE_CHANGED`, `BANDIT_THREAT_STATE_CHANGED` (via the public `getState()`/`getStealAmount()`).
+- **Autosave**: 60 s looping `TimerEvent` on the Game scene clock (auto-paused while the game is paused); skipped while `combatSystem.isActive` — in-flight assaults are never serialized (on load warriors respawn at their Barracks, camp HP persists, bandits respawn fresh). **Manual save**: `Save Game` button in `PauseMenu` emits `GAME_SAVE_REQUEST`; `UI.js` calls `SaveManager.save()` and toasts "Game saved" / "Save failed".
+- Adding a new persisted field: extend that system's `toJSON`/`fromJSON` and bump nothing — same-version saves missing the field should be defaulted in `fromJSON`. Breaking schema changes: bump `SAVE_VERSION` (old saves are silently discarded).
 
 ### Adding a New Building
 

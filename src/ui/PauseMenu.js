@@ -2,9 +2,9 @@ import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
 const PANEL_W = 360;
-const PANEL_H = 220;
+const PANEL_H = 265;
 const PANEL_X = 480 - PANEL_W / 2;
-const PANEL_Y = 210;
+const PANEL_Y = 190;
 
 const BTN_W = 148;
 const BTN_H = 30;
@@ -46,22 +46,33 @@ export class PauseMenu {
         this._divider.lineBetween(PANEL_X + 20, PANEL_Y + 70, PANEL_X + PANEL_W - 20, PANEL_Y + 70);
 
         // Continue button
-        this._continueImg = scene.add.image(480, PANEL_Y + 110, 'btn-normal')
+        this._continueImg = scene.add.image(480, PANEL_Y + 105, 'btn-normal')
             .setScrollFactor(0).setDepth(1102).setInteractive({ useHandCursor: true });
-        this._continueLbl = scene.add.text(480, PANEL_Y + 110, 'Continue', {
+        this._continueLbl = scene.add.text(480, PANEL_Y + 105, 'Continue', {
             fontFamily: 'monospace', fontSize: '13px', color: '#eeeeff',
         }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(1103);
 
-        // Restart button
-        this._restartImg = scene.add.image(480, PANEL_Y + 155, 'btn-normal')
+        // Save Game button
+        this._saveImg = scene.add.image(480, PANEL_Y + 150, 'btn-normal')
             .setScrollFactor(0).setDepth(1102).setInteractive({ useHandCursor: true });
-        this._restartLbl = scene.add.text(480, PANEL_Y + 155, 'Restart Game', {
+        this._saveLbl = scene.add.text(480, PANEL_Y + 150, 'Save Game', {
+            fontFamily: 'monospace', fontSize: '13px', color: '#aaffaa',
+        }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(1103);
+
+        // Restart button
+        this._restartImg = scene.add.image(480, PANEL_Y + 195, 'btn-normal')
+            .setScrollFactor(0).setDepth(1102).setInteractive({ useHandCursor: true });
+        this._restartLbl = scene.add.text(480, PANEL_Y + 195, 'Restart Game', {
             fontFamily: 'monospace', fontSize: '13px', color: '#ffaaaa',
         }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(1103);
 
         this._continueImg.on('pointerover', () => this._continueImg.setTexture('btn-hover'));
         this._continueImg.on('pointerout',  () => this._continueImg.setTexture('btn-normal'));
         this._continueImg.on('pointerdown', () => GameEvents.emit(EventNames.GAME_RESUMED));
+
+        this._saveImg.on('pointerover', () => this._saveImg.setTexture('btn-hover'));
+        this._saveImg.on('pointerout',  () => this._saveImg.setTexture('btn-normal'));
+        this._saveImg.on('pointerdown', () => GameEvents.emit(EventNames.GAME_SAVE_REQUEST));
 
         this._restartImg.on('pointerover', () => this._restartImg.setTexture('btn-hover'));
         this._restartImg.on('pointerout',  () => this._restartImg.setTexture('btn-normal'));
@@ -80,6 +91,8 @@ export class PauseMenu {
         this._title.setVisible(true);
         this._continueImg.setVisible(true);
         this._continueLbl.setVisible(true);
+        this._saveImg.setVisible(true);
+        this._saveLbl.setVisible(true);
         this._restartImg.setVisible(true);
         this._restartLbl.setVisible(true);
 
@@ -94,6 +107,8 @@ export class PauseMenu {
         this._title.setVisible(false);
         this._continueImg.setVisible(false);
         this._continueLbl.setVisible(false);
+        this._saveImg.setVisible(false);
+        this._saveLbl.setVisible(false);
         this._restartImg.setVisible(false);
         this._restartLbl.setVisible(false);
 

@@ -31,6 +31,28 @@ export class TileMap {
         this.grid = [];
     }
 
+    /** Serializable map state for the save system. */
+    toJSON() {
+        return {
+            grid:          this.grid,
+            banditCampCol: this.banditCampCol ?? null,
+            banditCampRow: this.banditCampRow ?? null,
+        };
+    }
+
+    /** Restores a saved map instead of generating one. */
+    fromJSON(data) {
+        this.grid = data.grid;
+        if (data.banditCampCol !== null && data.banditCampCol !== undefined) {
+            this.banditCampCol = data.banditCampCol;
+            this.banditCampRow = data.banditCampRow;
+        }
+        // BanditCampSystem restores the claimed-tile list authoritatively after
+        // initFromMap — the generator-time list is not needed on the load path.
+        this.banditClaimedTiles = [];
+        return this;
+    }
+
     generate() {
         // Retry the full generation until all three resource features (2 stone outcrops +
         // iron deposit) are reachable from the starting area via road-placeable tiles.

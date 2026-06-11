@@ -49,6 +49,14 @@ export class CombatSystem {
 
     get isActive() { return this._active; }
 
+    /** Current camp HP — persists across failed assaults and game saves. */
+    get campHp() { return this._campHp; }
+
+    /** Restores saved camp HP. Assault state is transient and never saved. */
+    hydrate({ campHp }) {
+        this._campHp = campHp;
+    }
+
     startAssault() {
         if (this._active) {
             GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: 'Attack already in progress.' });

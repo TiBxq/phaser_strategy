@@ -135,7 +135,7 @@ export class BuildingRenderer {
         });
     }
 
-    _addBuilding(building) {
+    _addBuilding(building, { animate = true } = {}) {
         const config      = BUILDING_CONFIGS[building.configId];
         const anchorTile  = this.tileMap.getTile(building.col, building.row);
         const anchorH     = anchorTile ? anchorTile.height : 0;
@@ -145,18 +145,21 @@ export class BuildingRenderer {
         const img = this.scene.add.image(x, y, config.textureKey)
             .setOrigin(0.5, 1)
             .setDepth(depth)
-            .setAlpha(0);
+            .setAlpha(animate ? 0 : 1);
 
         this._buildingSprites.set(building.uid, img);
-        if (this._ghost) this._ghost.setVisible(false);
-        this._clearGhostTiles();
-        this._spawnPlacementEffect(x, y, depth);
 
-        // Building emerges from the dust cloud
-        this.scene.time.delayedCall(180, () => {
-            this.scene.tweens.add({ targets: img, alpha: 1, duration: 180, ease: 'quad.out' });
-        });
-        this.scene.sound.play('sfx-build', { volume: 0.7 });
+        if (animate) {
+            if (this._ghost) this._ghost.setVisible(false);
+            this._clearGhostTiles();
+            this._spawnPlacementEffect(x, y, depth);
+
+            // Building emerges from the dust cloud
+            this.scene.time.delayedCall(180, () => {
+                this.scene.tweens.add({ targets: img, alpha: 1, duration: 180, ease: 'quad.out' });
+            });
+            this.scene.sound.play('sfx-build', { volume: 0.7 });
+        }
 
         // Farm fields: 4 individual tile sprites per 2×2 block
         for (const block of building.fieldTiles) {
@@ -164,6 +167,20 @@ export class BuildingRenderer {
                 this._addFieldSprite(block.col + dc, block.row + dr);
             }
         }
+    }
+
+    /**
+     * Rebuilds all building visuals from BuildSystem state after a game load —
+     * no placement effects, sounds, or BUILDING_PLACED side-effects.
+     */
+    syncFromState() {
+        for (const building of this._buildSystem.placedBuildings.values()) {
+            this._addBuilding(building, { animate: false });
+        }
+        this._refreshNoRoadIcons();
+        this._refreshNoWorkerIcons();
+        this._refreshDepletedIcons();
+        this._updateWorkerTiles();
     }
 
     _spawnPlacementEffect(x, y, buildingDepth) {

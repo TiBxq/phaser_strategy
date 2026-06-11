@@ -17,6 +17,22 @@ export class BuildSystem {
         this.fogSystem  = null;
     }
 
+    // ─── Save / load ───────────────────────────────────────────────────────────
+
+    toJSON() {
+        return {
+            nextUid: this._nextUid,
+            // pendingWorkers is forced to 0: in-transit worker marches are
+            // cancelled by the save (SaveManager folds them back into unassigned).
+            placed:  [...this.placedBuildings.values()].map(b => ({ ...b, pendingWorkers: 0 })),
+        };
+    }
+
+    fromJSON(data) {
+        this.placedBuildings = new Map(data.placed.map(b => [b.uid, b]));
+        this._nextUid        = data.nextUid;
+    }
+
     // ─── Validation ────────────────────────────────────────────────────────────
 
     /**

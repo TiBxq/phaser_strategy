@@ -23,6 +23,25 @@ export class HungerSystem {
         GameEvents.on(EventNames.PRODUCTION_TICK, () => this._onProductionTick());
     }
 
+    toJSON() {
+        return {
+            state:                 this._state,
+            zeroFoodCycles:        this._zeroFoodCycles,
+            recoveryCycles:        this._recoveryCycles,
+            departureCycleCounter: this._departureCycleCounter,
+            returnCycleCounter:    this._returnCycleCounter,
+        };
+    }
+
+    /** Silent restore — UI.create() re-emits HUNGER_STATE_CHANGED at its end. */
+    fromJSON(data) {
+        this._state                 = data.state;
+        this._zeroFoodCycles        = data.zeroFoodCycles;
+        this._recoveryCycles        = data.recoveryCycles;
+        this._departureCycleCounter = data.departureCycleCounter;
+        this._returnCycleCounter    = data.returnCycleCounter;
+    }
+
     /** Returns the production efficiency multiplier for the current hunger state. */
     getEfficiencyMultiplier() {
         if (this._state === 'starving') return 0.25;

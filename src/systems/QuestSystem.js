@@ -47,6 +47,29 @@ export class QuestSystem {
         this._startQuest(0);
     }
 
+    // ─── Save / load ───────────────────────────────────────────────────────────
+
+    toJSON() {
+        return {
+            questIndex:       this._questIndex,
+            taskStates:       [...this._taskStates],
+            producedCounters: [...this._producedCounters],
+        };
+    }
+
+    /**
+     * Restores quest progress. Must NOT go through _startQuest(): it would wipe
+     * the restored task states and _checkExistingState() would cascade quest
+     * completions (with notification spam) against the hydrated build state.
+     * Emits QUEST_STARTED so QuestHintSystem refreshes before the UI exists.
+     */
+    fromJSON(data) {
+        this._questIndex       = data.questIndex;
+        this._taskStates       = new Map(data.taskStates);
+        this._producedCounters = new Map(data.producedCounters);
+        GameEvents.emit(EventNames.QUEST_STARTED, { quest: this.currentQuest });
+    }
+
     // ─── Public API (used by QuestPanel) ──────────────────────────────────────
 
     /** The currently active quest object from QuestConfig. */

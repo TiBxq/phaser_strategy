@@ -29,6 +29,18 @@ export class ResourceSystem {
         return true;
     }
 
+    // ─── Save / load ───────────────────────────────────────────────────────────
+
+    toJSON() {
+        return { amounts: { ...this._amounts }, cap: this._cap };
+    }
+
+    /** Silent restore — UI.create() re-emits RESOURCES_CHANGED at its end. */
+    fromJSON(data) {
+        this._amounts = { ...data.amounts };
+        this._cap     = data.cap;
+    }
+
     // ─── Mutations ─────────────────────────────────────────────────────────────
 
     /**

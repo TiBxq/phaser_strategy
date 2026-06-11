@@ -11,6 +11,17 @@ export class RoadSystem {
         this.fogSystem = null;
     }
 
+    // ─── Save / load ───────────────────────────────────────────────────────────
+
+    toJSON() {
+        return [...this.roadTiles];
+    }
+
+    /** Tile isRoad flags are restored with the map grid — only the Set is rebuilt here. */
+    fromJSON(data) {
+        this.roadTiles = new Set(data);
+    }
+
     // ─── Placement ─────────────────────────────────────────────────────────────
 
     /**

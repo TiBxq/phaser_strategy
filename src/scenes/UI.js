@@ -13,6 +13,7 @@ import { ComingSoonScreen } from '../ui/ComingSoonScreen.js';
 import { PauseMenu } from '../ui/PauseMenu.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
+import { SaveManager } from '../save/SaveManager.js';
 
 export class UI extends Phaser.Scene {
     constructor() {
@@ -24,7 +25,8 @@ export class UI extends Phaser.Scene {
         const gameScene = this.scene.get('Game');
 
         this.resourceBar  = new ResourceBar(this, gameScene.questHintSystem);
-        this.buildingMenu = new BuildingMenu(this, gameScene.resourceSystem, gameScene.buildSystem, gameScene.questHintSystem);
+        this.buildingMenu = new BuildingMenu(this, gameScene.resourceSystem, gameScene.buildSystem, gameScene.questHintSystem,
+            gameScene.loadedSnapshot?.ui?.everPlaced ?? []);
         this.buildModeIndicator = new BuildModeIndicator(this);
         this.notificationManager = new NotificationManager(this);
         this.tileInfoPanel = new TileInfoPanel(this, gameScene.buildSystem, gameScene.tileMap, gameScene.resourceSystem);
@@ -32,7 +34,7 @@ export class UI extends Phaser.Scene {
         this.hungerAlert   = new HungerAlert(this);
         this.banditAlert   = new BanditAlert(this);
         this.questPanel       = new QuestPanel(this, gameScene.questSystem);
-        this.cameraHint       = new CameraHint(this);
+        this.cameraHint       = new CameraHint(this, gameScene.loadedSnapshot?.ui?.cameraHintDismissed ?? false);
         this.comingSoonScreen = new ComingSoonScreen(this);
         this.pauseMenu        = new PauseMenu(this);
 
@@ -63,6 +65,15 @@ export class UI extends Phaser.Scene {
             GameEvents.removeAllListeners();
             this.scene.stop('Game');
             this.scene.start('Menu');
+        });
+
+        // Manual save from the pause menu (works while the Game scene is paused —
+        // this scene keeps running and the save only reads state)
+        GameEvents.on(EventNames.GAME_SAVE_REQUEST, () => {
+            const ok = SaveManager.save(gameScene);
+            GameEvents.emit(EventNames.SHOW_NOTIFICATION, {
+                message: ok ? 'Game saved' : 'Save failed',
+            });
         });
 
         // Wire villager assignment events to VillagerManager
@@ -138,6 +149,18 @@ export class UI extends Phaser.Scene {
         GameEvents.emit(EventNames.RESOURCES_CHANGED, {
             ...resources,
             cap: gameScene.resourceSystem.getCap(),
+        });
+
+        // Refresh the villager count (the load-path VILLAGERS_CHANGED fires before this scene exists)
+        gameScene.villagerManager.notifyChanged();
+
+        // Restore alert badges after a game load (no-ops in the default states)
+        GameEvents.emit(EventNames.HUNGER_STATE_CHANGED, {
+            state: gameScene.hungerSystem.getState(),
+        });
+        GameEvents.emit(EventNames.BANDIT_THREAT_STATE_CHANGED, {
+            state:       gameScene.banditThreatSystem.getState(),
+            stealAmount: gameScene.banditThreatSystem.getStealAmount(),
         });
     }
 }

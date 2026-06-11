@@ -11,10 +11,14 @@ const BORDER = 2;
 const PANS_TO_DISMISS = 3;
 
 export class CameraHint {
-    constructor(scene) {
+    constructor(scene, startDismissed = false) {
         this._scene     = scene;
         this._panCount  = 0;
-        this._dismissed = false;
+        this._dismissed = startDismissed;
+
+        // Already dismissed in a previous session (restored from a save) —
+        // the player knows how to pan, never show the hint again.
+        if (startDismissed) return;
 
         this._bg = scene.add.graphics()
             .setScrollFactor(0)
@@ -67,6 +71,11 @@ export class CameraHint {
             if (this._panCount >= PANS_TO_DISMISS) this._dismiss();
         };
         GameEvents.on(EventNames.CAMERA_PANNED, this._onPanned);
+    }
+
+    /** True once the player has completed enough pans — persisted by the save system. */
+    isDismissed() {
+        return this._dismissed;
     }
 
     _dismiss() {

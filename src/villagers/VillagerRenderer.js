@@ -47,6 +47,31 @@ export class VillagerRenderer {
         });
     }
 
+    // ── Save / load ───────────────────────────────────────────────────────────
+
+    /**
+     * After a game load: recreate stationed (invisible, assigned) workers for
+     * every building, mirroring the state a completed worker march leaves behind.
+     * Call villagerManager.notifyChanged() afterwards to top up free wanderers.
+     */
+    hydrateStationed() {
+        for (const building of this._buildSystem.placedBuildings.values()) {
+            const count = building.assignedVillagers ?? 0;
+            if (count <= 0) continue;
+
+            const stationed = this._stationed.get(building.uid) ?? [];
+            for (let i = 0; i < count; i++) {
+                const entity = new VillagerEntity(
+                    this._scene, this._tileMap, building.col, building.row, this._fogSystem);
+                // teleportTo cancels the wander timer started by the constructor
+                entity.teleportTo(building.col, building.row);
+                entity.setVisible(false);
+                stationed.push(entity);
+            }
+            this._stationed.set(building.uid, stationed);
+        }
+    }
+
     // ── Entity count sync ─────────────────────────────────────────────────────
 
     _countAll() {

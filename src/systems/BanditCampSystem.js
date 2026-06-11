@@ -24,6 +24,23 @@ export class BanditCampSystem {
         this._claimedTiles = tileMap.banditClaimedTiles ?? [];
     }
 
+    toJSON() {
+        return {
+            campCol:      this.campCol,
+            campRow:      this.campRow,
+            isCleared:    this.isCleared,
+            claimedTiles: this._claimedTiles,
+        };
+    }
+
+    /** Restores saved camp state — call after initFromMap() so it wins. */
+    fromJSON(data) {
+        this.campCol       = data.campCol;
+        this.campRow       = data.campRow;
+        this.isCleared     = data.isCleared;
+        this._claimedTiles = data.claimedTiles ?? [];
+    }
+
     /** Read-only access to claimed tile positions. */
     get claimedTiles() { return this._claimedTiles; }
 

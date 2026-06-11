@@ -31,7 +31,7 @@ const ENTRY_W    = ICON_SIZE + ICON_GAP + NUM_W;
 const MENU_ORDER = ['TOWN_HALL', 'HOUSE', 'FARM', 'LUMBERMILL', 'QUARRY', 'IRON_MINE', 'SMITHY', 'BARRACKS', 'MARKET', 'WAREHOUSE', 'ROAD'];
 
 export class BuildingMenu {
-    constructor(scene, resourceSystem, buildSystem, questHintSystem) {
+    constructor(scene, resourceSystem, buildSystem, questHintSystem, savedEverPlaced = []) {
         this.scene           = scene;
         this._resourceSystem = resourceSystem;
         this._buildSystem    = buildSystem;
@@ -43,8 +43,12 @@ export class BuildingMenu {
 
         // Unlocks latch permanently: once a building type has been placed it keeps
         // unlocking its dependents even if later demolished or pillaged.
-        this._everPlaced = new Set(
-            [...buildSystem.placedBuildings.values()].map(b => b.configId));
+        // savedEverPlaced restores the latch after a game load (placed buildings
+        // alone would miss demolished/pillaged prerequisites).
+        this._everPlaced = new Set([
+            ...savedEverPlaced,
+            ...[...buildSystem.placedBuildings.values()].map(b => b.configId),
+        ]);
 
         // Background
         scene.add.image(scene.scale.width / 2, scene.scale.height, 'ui-bottombar')
@@ -161,6 +165,11 @@ export class BuildingMenu {
     }
 
     // ─── Lock system ───────────────────────────────────────────────────────────
+
+    /** Unlock latch contents — persisted by the save system. */
+    getEverPlaced() {
+        return [...this._everPlaced];
+    }
 
     /**
      * Returns true if all requires conditions for this building ID are met.

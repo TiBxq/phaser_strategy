@@ -156,4 +156,7 @@ export const EventNames = Object.freeze({
 
     // Player requested a full restart from the pause menu
     GAME_RESTART_REQUEST: 'game:restart_request',
+
+    // Player requested a manual save from the pause menu
+    GAME_SAVE_REQUEST: 'game:save_request',
 });

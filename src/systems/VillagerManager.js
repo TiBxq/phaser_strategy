@@ -10,6 +10,13 @@ export class VillagerManager {
         this.assignments = new Map();
     }
 
+    /** Silent restore — SaveManager.syncRenderers calls notifyChanged() afterwards. */
+    fromJSON(data) {
+        this.total       = data.total;
+        this.unassigned  = data.unassigned;
+        this.assignments = new Map(data.assignments);
+    }
+
     addVillagers(count) {
         this.total      += count;
         this.unassigned += count;
