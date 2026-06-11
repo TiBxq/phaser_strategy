@@ -36,9 +36,15 @@ export class Preloader extends Phaser.Scene {
         this.load.spritesheet('soldier-idle',     'assets/characters/Soldier-Idle.png',     { frameWidth: 100, frameHeight: 100 });
         this.load.spritesheet('soldier-attack01', 'assets/characters/Soldier-Attack01.png', { frameWidth: 100, frameHeight: 100 });
         this.load.spritesheet('soldier-attack02', 'assets/characters/Soldier-Attack02.png', { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('soldier-hurt',     'assets/characters/Soldier-Hurt.png',     { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('soldier-death',    'assets/characters/Soldier-Death.png',    { frameWidth: 100, frameHeight: 100 });
         this.load.image('soldier-shadow', 'assets/characters/Soldier-Shadow.png');
-        this.load.spritesheet('orc-walk', 'assets/characters/Orc-Walk.png', { frameWidth: 100, frameHeight: 100 });
-        this.load.spritesheet('orc-idle', 'assets/characters/Orc-Idle.png', { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('orc-walk',     'assets/characters/Orc-Walk.png',     { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('orc-idle',     'assets/characters/Orc-Idle.png',     { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('orc-attack01', 'assets/characters/Orc-Attack01.png', { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('orc-attack02', 'assets/characters/Orc-Attack02.png', { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('orc-hurt',     'assets/characters/Orc-Hurt.png',     { frameWidth: 100, frameHeight: 100 });
+        this.load.spritesheet('orc-death',    'assets/characters/Orc-Death.png',    { frameWidth: 100, frameHeight: 100 });
 
         // Critter: stag — walk 11 frames (352px / 32px), idle 24 frames (768px / 32px)
         for (const dir of ['NE', 'NW', 'SE', 'SW']) {
@@ -148,6 +154,34 @@ export class Preloader extends Phaser.Scene {
             frameRate: 8,
             repeat: 0,
         });
+        this.anims.create({
+            key: 'orc-attack01',
+            frames: this.anims.generateFrameNumbers('orc-attack01', { start: 0, end: 5 }),
+            frameRate: 8,
+            repeat: 0,
+        });
+        this.anims.create({
+            key: 'orc-attack02',
+            frames: this.anims.generateFrameNumbers('orc-attack02', { start: 0, end: 5 }),
+            frameRate: 8,
+            repeat: 0,
+        });
+        // Hurt is quick (~330 ms) so it finishes well before the next duel swing;
+        // death (~670 ms) matches the old procedural fall-over duration.
+        for (const who of ['soldier', 'orc']) {
+            this.anims.create({
+                key: `${who}-hurt`,
+                frames: this.anims.generateFrameNumbers(`${who}-hurt`, { start: 0, end: 3 }),
+                frameRate: 12,
+                repeat: 0,
+            });
+            this.anims.create({
+                key: `${who}-death`,
+                frames: this.anims.generateFrameNumbers(`${who}-death`, { start: 0, end: 3 }),
+                frameRate: 6,
+                repeat: 0,
+            });
+        }
 
         this.scene.start('Menu');
     }

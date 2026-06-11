@@ -44,11 +44,13 @@ export function spawnDamageFloat(scene, x, y, amount) {
  * The host must expose `_sprite`, `_shadow`, `col`, `row`.
  *
  * Owns: hp/armor/damage, the floating HP bar (shown only when injured),
- * out-of-combat regeneration, hit flash + damage floats, and the death tween.
+ * out-of-combat regeneration, hurt/death reactions and damage floats.
+ * Pass `hurtAnim` / `deathAnim` / `idleAnim` keys to use spritesheet reactions;
+ * without them, hits flash white and death is a procedural fall-over tween.
  * Set `onDeathComplete` to be notified once the death animation has finished.
  */
 export class Combatant {
-    constructor(scene, host, stats, { baseTint = 0xffffff } = {}) {
+    constructor(scene, host, stats, { baseTint = 0xffffff, idleAnim = null, hurtAnim = null, deathAnim = null } = {}) {
         this._scene   = scene;
         this._host    = host;
         this.maxHp     = stats.maxHp;
@@ -59,7 +61,10 @@ export class Combatant {
         this.inCombat = false;
         this.isDead   = false;
         this.onDeathComplete = null;
-        this._baseTint = baseTint;
+        this._baseTint  = baseTint;
+        this._idleAnim  = idleAnim;
+        this._hurtAnim  = hurtAnim;
+        this._deathAnim = deathAnim;
         this._destroyed = false;
 
         this._bar = scene.add.graphics().setVisible(false);
@@ -97,13 +102,13 @@ export class Combatant {
 
         const sprite = this._host._sprite;
         spawnDamageFloat(this._scene, sprite.x, sprite.y + BAR_Y_OFFSET, dmg);
-        this._flash();
         this._redrawBar();
 
         if (this.hp <= 0) {
             this.kill();
             return true;
         }
+        this._playHurt();
         return false;
     }
 
@@ -127,6 +132,20 @@ export class Combatant {
 
     // ── Internal ──────────────────────────────────────────────────────────────
 
+    /** Non-lethal hit reaction: hurt animation when available, white flash otherwise. */
+    _playHurt() {
+        const sprite = this._host._sprite;
+        if (this._hurtAnim && this._scene.anims.exists(this._hurtAnim)) {
+            sprite.play(this._hurtAnim);
+            sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+                if (this.isDead || !sprite.active || this._host._isWalking) return;
+                if (this._idleAnim) sprite.play(this._idleAnim);
+            });
+        } else {
+            this._flash();
+        }
+    }
+
     _flash() {
         const sprite = this._host._sprite;
         sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
@@ -138,14 +157,32 @@ export class Combatant {
         });
     }
 
-    /** Fall over sideways around the feet, darken and fade out. */
+    /** Death animation when available, else fall over sideways, darken and fade out. */
     _playDeath() {
         const sprite = this._host._sprite;
         const shadow = this._host._shadow;
-        sprite.anims.stop();
         sprite.setTintMode(Phaser.TintModes.MULTIPLY);
         if (this._baseTint === 0xffffff) sprite.clearTint();
         else sprite.setTint(this._baseTint);
+
+        if (this._deathAnim && this._scene.anims.exists(this._deathAnim)) {
+            // Stale once-listeners (attack/hurt returns-to-idle) would override the
+            // death anim's final frame when it completes — drop them first.
+            sprite.off(Phaser.Animations.Events.ANIMATION_COMPLETE);
+            sprite.play(this._deathAnim);
+            sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+                this._scene.tweens.add({
+                    targets:  [sprite, shadow],
+                    alpha:    0,
+                    duration: DEATH_MS * 0.6,
+                    ease:     'Linear',
+                    onComplete: () => this.onDeathComplete?.(this._host),
+                });
+            });
+            return;
+        }
+
+        sprite.anims.stop();
         const fallDir = sprite.flipX ? -90 : 90;
 
         this._scene.tweens.add({

@@ -51,7 +51,12 @@ export class WarriorEntity {
             .setDepth(baseDepth + LAYER_VILLAGER);
         this._sprite.play('soldier-idle');
 
-        this.combat = new Combatant(scene, this, WARRIOR_STATS, { baseTint: WARRIOR_TINT });
+        this.combat = new Combatant(scene, this, WARRIOR_STATS, {
+            baseTint:  WARRIOR_TINT,
+            idleAnim:  'soldier-idle',
+            hurtAnim:  'soldier-hurt',
+            deathAnim: 'soldier-death',
+        });
 
         this._scheduleWander();
     }

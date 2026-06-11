@@ -46,7 +46,11 @@ export class BanditEntity {
             .setDepth(baseDepth + LAYER_VILLAGER);
         this._sprite.play('orc-idle');
 
-        this.combat       = new Combatant(scene, this, BANDIT_STATS);
+        this.combat       = new Combatant(scene, this, BANDIT_STATS, {
+            idleAnim:  'orc-idle',
+            hurtAnim:  'orc-hurt',
+            deathAnim: 'orc-death',
+        });
         this._held        = false;
         this._engagedBy   = null;
         this._onWalkDone  = null;
@@ -100,30 +104,18 @@ export class BanditEntity {
         }
     }
 
-    /** Face (targetCol, targetRow) and lunge toward it (no attack spritesheet for orcs). */
+    /** Face (targetCol, targetRow) and play one attack swing, then return to idle. */
     playAttackSwing(targetCol, targetRow) {
         if (this.combat.isDead) return;
         const dx = (targetCol - this.col) - (targetRow - this.row);
         if (dx !== 0) this._sprite.setFlipX(dx < 0);
-
-        const here   = this._currentWorldPos();
-        const there  = tileToWorld(targetCol, targetRow, 0);
-        const dist   = Math.hypot(there.x - here.x, there.y - here.y) || 1;
-        const lungeX = (there.x - here.x) / dist * 12;
-        const lungeY = (there.y - here.y) / dist * 8;
-        this._scene.tweens.add({
-            targets:  this._sprite,
-            x:        this._sprite.x + lungeX,
-            y:        this._sprite.y + lungeY,
-            duration: 140,
-            yoyo:     true,
-            ease:     'Quad.Out',
+        const key = Math.random() < 0.5 ? 'orc-attack01' : 'orc-attack02';
+        this._sprite.play(key);
+        this._sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+            if (!this.combat.isDead && !this._isWalking && this._sprite.active) {
+                this._sprite.play('orc-idle');
+            }
         });
-    }
-
-    _currentWorldPos() {
-        const tile = this._tileMap.getTile(this.col, this.row);
-        return tileToWorld(this.col, this.row, tile ? tile.height : 0);
     }
 
     /** Show/hide based on whether the current tile is in the fog. */
