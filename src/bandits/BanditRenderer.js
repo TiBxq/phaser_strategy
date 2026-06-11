@@ -1,6 +1,6 @@
 import { BanditEntity } from './BanditEntity.js';
 import { tileToWorld, TILE_H } from '../map/MapRenderer.js';
-import { randomWalkableTileNear, randomWalkableTile } from '../villagers/walkable.js';
+import { isWalkable, heightMoveCost, randomWalkableTileNear, randomWalkableTile } from '../villagers/walkable.js';
 import { LAYER_BUILDING, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
@@ -80,13 +80,16 @@ export class BanditRenderer {
 
     _spawnBandits() {
         const { campCol, campRow } = this._banditCampSystem;
+        const pool = this._reachableTilesNearCamp(SPAWN_RADIUS);
         const used = new Set();
 
         for (let i = 0; i < BANDIT_COUNT; i++) {
             let tile = null;
             for (let attempt = 0; attempt < 10 && !tile; attempt++) {
-                const t = randomWalkableTileNear(this._tileMap, campCol, campRow, SPAWN_RADIUS)
-                       ?? randomWalkableTile(this._tileMap);
+                const t = pool.length
+                    ? pool[Math.floor(Math.random() * pool.length)]
+                    : (randomWalkableTileNear(this._tileMap, campCol, campRow, SPAWN_RADIUS)
+                       ?? randomWalkableTile(this._tileMap));
                 if (t && !used.has(`${t.col},${t.row}`)) tile = t;
             }
             if (!tile) continue;
@@ -98,6 +101,48 @@ export class BanditRenderer {
                 this._fogSystem,
             ));
         }
+    }
+
+    /**
+     * Walkable tiles within Manhattan SPAWN_RADIUS of the camp that are
+     * BFS-connected to the camp footprint. Bandits must never spawn inside a
+     * sealed forest pocket — warriors could not stand next to them, leaving
+     * them undueled until the camp-fall kill.
+     */
+    _reachableTilesNearCamp(radius) {
+        const { campCol, campRow } = this._banditCampSystem;
+        const inFootprint = (c, r) =>
+            c >= campCol && c <= campCol + 1 && r >= campRow && r <= campRow + 1;
+
+        const visited = new Set();
+        const queue   = [];
+        // Map generation guarantees the (walkable, GRASS-typed) footprint is
+        // reachable from the player's area, so it is the safe BFS seed.
+        for (const [dc, dr] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+            const t = this._tileMap.getTile(campCol + dc, campRow + dr);
+            if (t && isWalkable(t)) {
+                visited.add(`${t.col},${t.row}`);
+                queue.push(t);
+            }
+        }
+
+        const result = [];
+        while (queue.length) {
+            const cur = queue.shift();
+            for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                const c = cur.col + dc, r = cur.row + dr;
+                const key = `${c},${r}`;
+                if (visited.has(key)) continue;
+                if (Math.abs(c - campCol) + Math.abs(r - campRow) > radius) continue;
+                const t = this._tileMap.getTile(c, r);
+                if (!t || !isWalkable(t)) continue;
+                if (heightMoveCost(cur, t) === Infinity) continue;
+                visited.add(key);
+                queue.push(t);
+                if (!inFootprint(c, r)) result.push({ col: c, row: r });
+            }
+        }
+        return result;
     }
 
     _refreshFogVisibility() {
