@@ -1,5 +1,6 @@
 import { BanditEntity } from './BanditEntity.js';
 import { tileToWorld, TILE_H } from '../map/MapRenderer.js';
+import { spawnDemolitionEffect } from '../map/DemolitionEffect.js';
 import { isWalkable, heightMoveCost, randomWalkableTileNear, randomWalkableTile } from '../villagers/walkable.js';
 import { LAYER_BUILDING, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
 import { GameEvents } from '../events/GameEvents.js';
@@ -51,7 +52,11 @@ export class BanditRenderer {
 
     /** Destroy only the camp sprite (combat kills the bandits individually). */
     destroyCampSprite() {
-        if (this._campSprite) { this._campSprite.destroy(); this._campSprite = null; }
+        if (this._campSprite) {
+            spawnDemolitionEffect(this._scene, this._campSprite.x, this._campSprite.y, this._campSprite.depth);
+            this._campSprite.destroy();
+            this._campSprite = null;
+        }
     }
 
     // ── Private ────────────────────────────────────────────────────────────────
