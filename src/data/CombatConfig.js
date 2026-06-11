@@ -1,13 +1,13 @@
 /**
  * Combat tuning for the bandit camp assault.
  *
- * Damage formula: dmg = max(0, attacker.damage - defender.armor)
- * A 1v1 duel: warrior takes 10-3=7 per bandit hit, bandit takes 10-2=8 per
- * warrior hit. The warrior swings first, needs 5 swings to kill and eats 4
- * retaliations — it wins, but barely, at 12/40 hp.
+ * Damage formula: dmg = max(0, roll(damageMin..damageMax) - defender.armor)
+ * A 1v1 duel on average rolls: warrior takes 10-3=7 per bandit hit, bandit
+ * takes 10-2=8 per warrior hit. The warrior swings first, needs ~5 swings to
+ * kill and eats ~4 retaliations — it wins, but barely, around 12/40 hp.
  */
-export const WARRIOR_STATS = Object.freeze({ maxHp: 40, armor: 3, damage: 10 });
-export const BANDIT_STATS  = Object.freeze({ maxHp: 40, armor: 2, damage: 10 });
+export const WARRIOR_STATS = Object.freeze({ maxHp: 40, armor: 3, damageMin: 8, damageMax: 12 });
+export const BANDIT_STATS  = Object.freeze({ maxHp: 40, armor: 2, damageMin: 8, damageMax: 12 });
 
 /** The camp building itself — attacked like a unit but never retaliates.
  *  Sized as a siege: 60 warrior swings total, ~13 s for a full squad of 5. */

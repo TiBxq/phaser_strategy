@@ -51,10 +51,11 @@ export class Combatant {
     constructor(scene, host, stats, { baseTint = 0xffffff } = {}) {
         this._scene   = scene;
         this._host    = host;
-        this.maxHp    = stats.maxHp;
-        this.hp       = stats.maxHp;
-        this.armor    = stats.armor;
-        this.damage   = stats.damage;
+        this.maxHp     = stats.maxHp;
+        this.hp        = stats.maxHp;
+        this.armor     = stats.armor;
+        this.damageMin = stats.damageMin;
+        this.damageMax = stats.damageMax;
         this.inCombat = false;
         this.isDead   = false;
         this.onDeathComplete = null;
@@ -78,6 +79,11 @@ export class Combatant {
                 this._redrawBar();
             },
         });
+    }
+
+    /** Random integer damage roll in [damageMin, damageMax] for one swing. */
+    rollDamage() {
+        return Phaser.Math.Between(this.damageMin, this.damageMax);
     }
 
     /**

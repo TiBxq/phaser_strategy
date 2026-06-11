@@ -267,7 +267,7 @@ export class CombatSystem {
         this._scene.time.delayedCall(HIT_IMPACT_MS, () => {
             if (!this._active || attacker.combat.isDead || defender.combat.isDead) return;
             playSfx(this._scene, 'sfx-hit', { volume: 0.5, rate: 0.9 + Math.random() * 0.2 });
-            const died = defender.combat.takeDamage(attacker.combat.damage);
+            const died = defender.combat.takeDamage(attacker.combat.rollDamage());
             if (died) {
                 this._onDuelDeath(defender, attacker);
             } else {
@@ -401,7 +401,7 @@ export class CombatSystem {
         this._scene.time.delayedCall(HIT_IMPACT_MS, () => {
             if (!this._active || this._campDestroyed || w.combat.isDead) return;
             playSfx(this._scene, 'sfx-hit', { volume: 0.5, rate: 0.8 + Math.random() * 0.2 });
-            const dmg = Math.max(0, w.combat.damage - CAMP_STATS.armor);
+            const dmg = Math.max(0, w.combat.rollDamage() - CAMP_STATS.armor);
             this._campHp = Math.max(0, this._campHp - dmg);
             this._campHitFeedback(dmg);
             if (this._campHp <= 0) {
