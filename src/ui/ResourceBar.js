@@ -18,16 +18,19 @@ const TEXT_STYLE = {
 };
 
 export class ResourceBar {
-    constructor(scene) {
+    constructor(scene, questHintSystem) {
         this.scene = scene;
 
         // Background
         scene.add.image(480, 0, 'ui-topbar').setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
         this._labels        = {};
+        this._icons         = {};
         this._prevValues    = {};
         this._flashing      = new Set();   // resource names currently mid-flash
         this._starvingFlash = false;
+        this._hintResource  = null;        // resource slot pulsed by the quest hint
+        this._hintTween     = null;
 
         const slotW  = 128;
         const startX = 30;
@@ -37,7 +40,7 @@ export class ResourceBar {
             const x = startX + i * slotW;
 
             // Icon
-            scene.add.image(x, y, ICON_KEYS[name])
+            this._icons[name] = scene.add.image(x, y, ICON_KEYS[name])
                 .setOrigin(0, 0.5)
                 .setScrollFactor(0)
                 .setDepth(1001);
@@ -61,6 +64,37 @@ export class ResourceBar {
         GameEvents.on(EventNames.RESOURCES_CHANGED, (data) => this._onResourcesChanged(data));
         GameEvents.on(EventNames.VILLAGERS_CHANGED, (data) => this._onVillagersChanged(data));
         GameEvents.on(EventNames.STARVATION_WARNING, () => this._flashFood());
+        GameEvents.on(EventNames.QUEST_HINT_CHANGED, ({ hint }) => this._applyHint(hint));
+        this._applyHint(questHintSystem?.currentHint ?? null);
+    }
+
+    // ─── Quest hint pulse on a resource slot ───────────────────────────────────
+
+    // Pulses alpha only — label color stays owned by the flash/starvation logic.
+    _applyHint(hint) {
+        const resource = hint?.type === 'resource' ? hint.resource : null;
+        if (resource === this._hintResource) return;
+
+        if (this._hintTween) {
+            this._hintTween.stop();
+            this._hintTween = null;
+        }
+        if (this._hintResource) {
+            this._labels[this._hintResource]?.setAlpha(1);
+            this._icons[this._hintResource]?.setAlpha(1);
+        }
+
+        this._hintResource = resource;
+        if (resource && this._labels[resource]) {
+            this._hintTween = this.scene.tweens.add({
+                targets:  [this._labels[resource], this._icons[resource]],
+                alpha:    { from: 1, to: 0.35 },
+                duration: 600,
+                ease:     'Sine.easeInOut',
+                yoyo:     true,
+                loop:     -1,
+            });
+        }
     }
 
     _onResourcesChanged(data) {

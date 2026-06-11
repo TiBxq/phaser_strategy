@@ -12,6 +12,8 @@ import { RoadSystem } from '../systems/RoadSystem.js';
 import { HungerSystem } from '../systems/HungerSystem.js';
 import { WarriorRenderer } from '../warriors/WarriorRenderer.js';
 import { QuestSystem } from '../systems/QuestSystem.js';
+import { QuestHintSystem } from '../systems/QuestHintSystem.js';
+import { QuestHintController } from '../systems/QuestHintController.js';
 import { FogOfWarSystem, VIS_MIN, VIS_MAX } from '../systems/FogOfWarSystem.js';
 import { BanditCampSystem } from '../systems/BanditCampSystem.js';
 import { BanditThreatSystem } from '../systems/BanditThreatSystem.js';
@@ -52,7 +54,8 @@ export class Game extends Phaser.Scene {
             this.resourceSystem, this.buildSystem, this.villagerManager);
         this.productionSystem.hungerSystem = this.hungerSystem;
 
-        this.questSystem = new QuestSystem(this.buildSystem, this.villagerManager, this.resourceSystem);
+        this.questSystem     = new QuestSystem(this.buildSystem, this.villagerManager, this.resourceSystem);
+        this.questHintSystem = new QuestHintSystem(this.questSystem);
 
         this.banditCampSystem = new BanditCampSystem();
         this.banditCampSystem.initFromMap(this.tileMap);
@@ -169,6 +172,15 @@ export class Game extends Phaser.Scene {
         // Reveal fog around every building placed
         GameEvents.on(EventNames.BUILDING_PLACED, ({ building }) => {
             this.fogOfWarSystem.revealAroundFootprint(building.col, building.row);
+        });
+
+        this.questHintController = new QuestHintController({
+            questHintSystem:  this.questHintSystem,
+            buildSystem:      this.buildSystem,
+            tileMap:          this.tileMap,
+            fogSystem:        this.fogOfWarSystem,
+            mapRenderer:      this.mapRenderer,
+            buildingRenderer: this.buildingRenderer,
         });
 
         // ── Launch UI in parallel ──────────────────────────────────────────────

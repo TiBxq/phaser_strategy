@@ -19,13 +19,15 @@ const PX = 762;
 const PY = 290;
 
 export class VillagerPanel {
-    constructor(scene, buildSystem, villagerManager) {
+    constructor(scene, buildSystem, villagerManager, questHintSystem) {
         this.scene          = scene;
         this.buildSystem    = buildSystem;
         this.villagerManager = villagerManager;
 
         this._currentBuildingUid = null;
         this._unassigned         = 0;
+        this._hint               = questHintSystem?.currentHint ?? null;
+        this._plusPulseTween     = null;
 
         // Background
         this._bg = scene.add.image(PX, PY, 'ui-sidepanel')
@@ -123,6 +125,46 @@ export class VillagerPanel {
             this._unassigned = unassigned;
             if (this._currentBuildingUid) this._refresh();
         });
+
+        GameEvents.on(EventNames.QUEST_HINT_CHANGED, ({ hint }) => {
+            this._hint = hint;
+            this._updatePlusPulse();
+        });
+    }
+
+    // ─── Quest hint pulse on the [+] button ────────────────────────────────────
+
+    _updatePlusPulse() {
+        const building = this._currentBuildingUid
+            ? this.buildSystem.getBuilding(this._currentBuildingUid)
+            : null;
+        const active = this._bg.visible
+            && building
+            && this._hint?.type === 'assignWorker'
+            && (!this._hint.configId || building.configId === this._hint.configId);
+        if (active) this._startPlusPulse();
+        else        this._stopPlusPulse();
+    }
+
+    _startPlusPulse() {
+        if (this._plusPulseTween) return;
+        this._btnPlus.setTint(0xffcc33);
+        this._plusPulseTween = this.scene.tweens.add({
+            targets:  [this._btnPlus, this._lblPlus],
+            alpha:    { from: 1, to: 0.4 },
+            duration: 600,
+            ease:     'Sine.easeInOut',
+            yoyo:     true,
+            loop:     -1,
+        });
+    }
+
+    _stopPlusPulse() {
+        if (!this._plusPulseTween) return;
+        this._plusPulseTween.stop();
+        this._plusPulseTween = null;
+        this._btnPlus.clearTint().setAlpha(1);
+        this._lblPlus.setAlpha(1);
     }
 
     _refresh() {
@@ -146,5 +188,6 @@ export class VillagerPanel {
         [this._bg, this._title, this._countLabel, this._freeLabel,
          this._btnMinus, this._lblMinus, this._btnPlus, this._lblPlus
         ].forEach(o => o.setVisible(v));
+        this._updatePlusPulse();
     }
 }

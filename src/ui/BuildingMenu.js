@@ -31,15 +31,20 @@ const ENTRY_W    = ICON_SIZE + ICON_GAP + NUM_W;
 const MENU_ORDER = ['TOWN_HALL', 'HOUSE', 'FARM', 'LUMBERMILL', 'QUARRY', 'IRON_MINE', 'SMITHY', 'BARRACKS', 'MARKET', 'WAREHOUSE', 'ROAD'];
 
 export class BuildingMenu {
-    constructor(scene, resourceSystem, buildSystem, questSystem) {
+    constructor(scene, resourceSystem, buildSystem, questHintSystem) {
         this.scene           = scene;
         this._resourceSystem = resourceSystem;
         this._buildSystem    = buildSystem;
-        this._questSystem    = questSystem;
         this._activeId       = null;
         this._buttons        = {};
         this._priceTags      = {}; // id -> { texts, cost }
         this._questPulseTween = null;
+        this._pulsedId        = null;   // menu id currently hint-pulsed
+
+        // Unlocks latch permanently: once a building type has been placed it keeps
+        // unlocking its dependents even if later demolished or pillaged.
+        this._everPlaced = new Set(
+            [...buildSystem.placedBuildings.values()].map(b => b.configId));
 
         // Background
         scene.add.image(scene.scale.width / 2, scene.scale.height, 'ui-bottombar')
@@ -142,23 +147,17 @@ export class BuildingMenu {
         GameEvents.on(EventNames.RESOURCES_CHANGED, () => this._updatePriceColors());
 
         // Re-evaluate lock conditions when any building is placed
-        GameEvents.on(EventNames.BUILDING_PLACED, () => this._updateLockStates());
+        GameEvents.on(EventNames.BUILDING_PLACED, ({ building }) => {
+            this._everPlaced.add(building.configId);
+            this._updateLockStates();
+        });
 
         // Apply initial lock states
         this._updateLockStates();
 
-        // Quest highlight: pulse Town Hall while its placement task is pending
-        GameEvents.on(EventNames.QUEST_STARTED,        ({ quest }) => this._onQuestStarted(quest));
-        GameEvents.on(EventNames.QUEST_TASK_COMPLETED, ({ task })  => { if (task.id === 'build_town_hall') this._stopQuestPulse('TOWN_HALL'); });
-        GameEvents.on(EventNames.QUEST_COMPLETED,      ()          => this._stopQuestPulse('TOWN_HALL'));
-
-        // Apply on construction if the first quest is already running
-        if (questSystem) {
-            const q = questSystem.currentQuest;
-            if (q?.id === 'FIRST_STEPS' && !questSystem.isTaskDone('build_town_hall')) {
-                this._startQuestPulse('TOWN_HALL');
-            }
-        }
+        // Quest highlight: pulse the button targeted by the active hint
+        GameEvents.on(EventNames.QUEST_HINT_CHANGED, ({ hint }) => this._applyHint(hint));
+        this._applyHint(questHintSystem?.currentHint ?? null);
     }
 
     // ─── Lock system ───────────────────────────────────────────────────────────
@@ -172,10 +171,7 @@ export class BuildingMenu {
         if (!config.requires || config.requires.length === 0) return true;
         return config.requires.every(req => {
             if (req.type === 'buildingPlaced') {
-                for (const b of this._buildSystem.placedBuildings.values()) {
-                    if (b.configId === req.configId) return true;
-                }
-                return false;
+                return this._everPlaced.has(req.configId);
             }
             return true;
         });
@@ -194,7 +190,6 @@ export class BuildingMenu {
             const { texts, icons, lockedLabel } = this._priceTags[id];
 
             if (id === 'TOWN_HALL' && this._isTownHallPlaced()) {
-                this._stopQuestPulse('TOWN_HALL');
                 btn.setVisible(false).disableInteractive();
                 lbl.setVisible(false);
                 for (const t of texts) t.setVisible(false);
@@ -228,6 +223,8 @@ export class BuildingMenu {
             }
         }
         this._relayout();
+        // Lock changes reset alpha/visibility — re-apply the hint pulse on top
+        this._restartQuestPulse();
     }
 
     _relayout() {
@@ -288,16 +285,31 @@ export class BuildingMenu {
 
     // ─── Quest highlight ───────────────────────────────────────────────────────
 
-    _onQuestStarted(quest) {
-        this._stopQuestPulse('TOWN_HALL');
-        if (quest.id === 'FIRST_STEPS' && this._questSystem && !this._questSystem.isTaskDone('build_town_hall')) {
-            this._startQuestPulse('TOWN_HALL');
-        }
+    /** Maps a hint payload to the menu button it targets (or null). */
+    _applyHint(hint) {
+        const targetId = hint?.type === 'buildButton' ? hint.configId
+                       : hint?.type === 'roadPath'    ? 'ROAD'
+                       : null;
+        if (targetId === this._pulsedId) return;
+        this._stopQuestPulse();
+        this._pulsedId = targetId;
+        this._startQuestPulse();
     }
 
-    _startQuestPulse(id) {
-        const entry = this._buttons[id];
-        if (!entry || !entry.btn.visible) return;
+    /** Stops and restarts the active pulse — called after lock-state changes. */
+    _restartQuestPulse() {
+        if (!this._pulsedId) return;
+        const id = this._pulsedId;
+        this._stopQuestPulse();
+        this._pulsedId = id;
+        this._startQuestPulse();
+    }
+
+    _startQuestPulse() {
+        const id    = this._pulsedId;
+        const entry = id && this._buttons[id];
+        // Locked or hidden buttons don't pulse; _updateLockStates re-applies later
+        if (!entry || !entry.btn.visible || !this._checkRequirements(id)) return;
         entry.btn.setTint(0xffcc33);
         this._questPulseTween = this.scene.tweens.add({
             targets:    entry.btn,
@@ -309,16 +321,17 @@ export class BuildingMenu {
         });
     }
 
-    _stopQuestPulse(id) {
+    _stopQuestPulse() {
         if (this._questPulseTween) {
             this._questPulseTween.stop();
             this._questPulseTween = null;
         }
-        const entry = this._buttons[id];
+        const entry = this._pulsedId && this._buttons[this._pulsedId];
         if (entry) {
             entry.btn.clearTint();
-            entry.btn.setAlpha(1);
+            entry.btn.setAlpha(this._checkRequirements(this._pulsedId) ? 1 : 0.4);
         }
+        this._pulsedId = null;
     }
 
     // ─── Active state ──────────────────────────────────────────────────────────

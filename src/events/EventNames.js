@@ -106,6 +106,14 @@ export const EventNames = Object.freeze({
     // All tasks in the active quest are done — payload: { quest }
     QUEST_COMPLETED: 'quest:completed',
 
+    // The guided-onboarding hint target changed — payload: { hint } where hint is
+    // null or one of:
+    //   { type: 'buildButton',  configId }                 — pulse a build-menu button
+    //   { type: 'roadPath',     targetConfigId }           — pulse Road button + path tiles
+    //   { type: 'assignWorker', configId }                 — pulse building + [+] button
+    //   { type: 'resource',     resource }                 — pulse a ResourceBar slot
+    QUEST_HINT_CHANGED: 'quest:hint_changed',
+
     // Fog of war state changed for one or more tiles
     // payload: { changes: Array<{ col, row, state: 'hidden'|'border'|'visible' }> }
     FOG_UPDATED: 'fog:updated',

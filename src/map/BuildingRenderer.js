@@ -48,6 +48,9 @@ export class BuildingRenderer {
         this._ghostTileSprites = [];
         // Selection highlight overlay for the selected building (depth 99999)
         this._selectionOverlay = null;
+        // Quest-hint overlay pulsing over the building the active task points at
+        this._questHintOverlay = null;
+        this._questHintTween   = null;
 
         this._bindEvents();
     }
@@ -692,6 +695,51 @@ export class BuildingRenderer {
 
     _clearSelectionOverlay() {
         if (this._selectionOverlay) this._selectionOverlay.setVisible(false);
+    }
+
+    // ─── Quest hint overlay ────────────────────────────────────────────────────
+
+    /** Gold pulsing overlay marking the building the active quest task points at. */
+    showQuestHintOverlay(building) {
+        // Already pulsing on this building — don't restart the tween
+        if (this._questHintUid === building.uid && this._questHintOverlay?.visible) return;
+        this._questHintUid = building.uid;
+
+        const config     = BUILDING_CONFIGS[building.configId];
+        const anchorTile = this.tileMap.getTile(building.col, building.row);
+        const anchorH    = anchorTile ? anchorTile.height : 0;
+        const { x, y }   = tileToWorld(building.col, building.row, anchorH);
+
+        if (!this._questHintOverlay) {
+            this._questHintOverlay = this.scene.add.image(x, y, config.textureKey)
+                .setOrigin(0.5, 1)
+                .setTint(0xffcc33)
+                .setDepth(DEPTH_SELECTION_OVERLAY);
+        } else {
+            this._questHintOverlay
+                .setTexture(config.textureKey)
+                .setPosition(x, y)
+                .setVisible(true);
+        }
+
+        if (this._questHintTween) this._questHintTween.stop();
+        this._questHintTween = this.scene.tweens.add({
+            targets:  this._questHintOverlay,
+            alpha:    { from: 0.55, to: 0.15 },
+            duration: 600,
+            ease:     'Sine.easeInOut',
+            yoyo:     true,
+            loop:     -1,
+        });
+    }
+
+    hideQuestHintOverlay() {
+        this._questHintUid = null;
+        if (this._questHintTween) {
+            this._questHintTween.stop();
+            this._questHintTween = null;
+        }
+        if (this._questHintOverlay) this._questHintOverlay.setVisible(false);
     }
 
     hideGhost() {

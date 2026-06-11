@@ -55,7 +55,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 0,
         villagerCapacity: 2,
         onPlace: 'spawnVillager',
-        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+        requires: [{ type: 'buildingPlaced', configId: 'LUMBERMILL' }],
         description: '2×2 building. Houses 2 villagers.',
         upgradesTo: 'HOUSE_T2',
         upgradeCost: { food: 0, wood: 25, stone: 30, money: 50 },
@@ -111,7 +111,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 0,   // dynamic: ceil(forestTiles.length / FOREST_TILES_PER_WORKER)
         villagerCapacity: 0,
         onPlace: 'claimForest',
-        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+        requires: [{ type: 'buildingPlaced', configId: 'FARM' }],
         description: '2×2 building. Claims all forest within radius 2. Workers = floor(tiles/4), each → 2 wood/tick.',
     },
 
@@ -129,7 +129,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 6,
         villagerCapacity: 0,
         onPlace: 'initRocksTiles',
-        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+        requires: [{ type: 'buildingPlaced', configId: 'LUMBERMILL' }],
         description: '2×2 building on rocks. Mines the 4 tiles it occupies (400 stone total). Up to 6 workers → 1 stone/tick each.',
     },
 
@@ -147,7 +147,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 6,
         villagerCapacity: 0,
         onPlace: 'initIronTiles',
-        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+        requires: [{ type: 'buildingPlaced', configId: 'QUARRY' }],
         description: '2×2 building on iron. Mines the 4 tiles it occupies (400 iron total). Up to 6 workers → 1 iron/tick each.',
     },
 
@@ -166,7 +166,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxWarriors: 0,
         villagerCapacity: 0,
         onPlace: null,
-        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+        requires: [{ type: 'buildingPlaced', configId: 'IRON_MINE' }],
         description: '2×2 building. 1 worker consumes 10 iron over 5 cycles to forge 1 weapon.',
     },
 
@@ -184,7 +184,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 5,
         villagerCapacity: 0,
         onPlace: null,
-        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+        requires: [{ type: 'buildingPlaced', configId: 'SMITHY' }],
         description: '2×2 building. Assign up to 5 villagers as warriors (1 weapon each). Upkeep: 2 money/warrior/tick.',
     },
 
@@ -202,7 +202,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 4,
         villagerCapacity: 0,
         onPlace: null,
-        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+        requires: [{ type: 'buildingPlaced', configId: 'LUMBERMILL' }],
         description: '2×2 building. Each merchant converts 3 food → 5 money/tick.',
     },
 
@@ -220,7 +220,7 @@ export const BUILDING_CONFIGS = Object.freeze({
         maxVillagers: 0,
         villagerCapacity: 0,
         onPlace: 'increaseStorageCap',
-        requires: [{ type: 'buildingPlaced', configId: 'TOWN_HALL' }],
+        requires: [{ type: 'buildingPlaced', configId: 'MARKET' }],
         description: '2×2 building. Increases all resource caps by 100.',
     },
 });

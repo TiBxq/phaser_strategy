@@ -79,6 +79,8 @@ export class MapRenderer {
 
         this._highlightSprite  = null;
         this._selectedSprites  = [];   // array — selection can span multiple tiles
+        this._hintSprites      = [];   // quest-hint tiles (suggested road path etc.)
+        this._hintTween        = null;
 
         this._fogSystem = null;
 
@@ -449,6 +451,48 @@ export class MapRenderer {
     clearSelection() {
         for (const s of this._selectedSprites) s.destroy();
         this._selectedSprites = [];
+    }
+
+    /**
+     * Show subtle quest-hint overlays on a set of tiles (suggested road path,
+     * valid placement anchors). Replaces any previous hint set.
+     */
+    showHintTiles(positions) {
+        // Unchanged set — keep the existing sprites/tween instead of restarting
+        const key = positions.map(p => `${p.col},${p.row}`).sort().join(';');
+        if (key === this._hintKey && this._hintSprites.length > 0) return;
+        this._hintKey = key;
+
+        this.clearHintTiles(true);
+        for (const { col, row } of positions) {
+            const tile = this.tileMap.getTile(col, row);
+            const h    = tile ? tile.height : 0;
+            const { x, y } = tileToWorld(col, row, h);
+            const sprite = this.scene.add.image(x, y, 'tile-hint')
+                .setOrigin(0.5, 1)
+                .setDepth(col + row + LAYER_TILE_SELECT);
+            this._hintSprites.push(sprite);
+        }
+        if (this._hintSprites.length > 0) {
+            this._hintTween = this.scene.tweens.add({
+                targets:  this._hintSprites,
+                alpha:    { from: 1, to: 0.35 },
+                duration: 700,
+                ease:     'Sine.easeInOut',
+                yoyo:     true,
+                loop:     -1,
+            });
+        }
+    }
+
+    clearHintTiles(keepKey = false) {
+        if (!keepKey) this._hintKey = null;
+        if (this._hintTween) {
+            this._hintTween.stop();
+            this._hintTween = null;
+        }
+        for (const s of this._hintSprites) s.destroy();
+        this._hintSprites = [];
     }
 
     /** Show a ghost road tile at (col, row) tinted green/red for valid/invalid. */

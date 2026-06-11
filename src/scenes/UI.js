@@ -23,12 +23,12 @@ export class UI extends Phaser.Scene {
         // Get references to the systems living in the Game scene
         const gameScene = this.scene.get('Game');
 
-        this.resourceBar  = new ResourceBar(this);
-        this.buildingMenu = new BuildingMenu(this, gameScene.resourceSystem, gameScene.buildSystem, gameScene.questSystem);
+        this.resourceBar  = new ResourceBar(this, gameScene.questHintSystem);
+        this.buildingMenu = new BuildingMenu(this, gameScene.resourceSystem, gameScene.buildSystem, gameScene.questHintSystem);
         this.buildModeIndicator = new BuildModeIndicator(this);
         this.notificationManager = new NotificationManager(this);
         this.tileInfoPanel = new TileInfoPanel(this, gameScene.buildSystem, gameScene.tileMap, gameScene.resourceSystem);
-        this.villagerPanel = new VillagerPanel(this, gameScene.buildSystem, gameScene.villagerManager);
+        this.villagerPanel = new VillagerPanel(this, gameScene.buildSystem, gameScene.villagerManager, gameScene.questHintSystem);
         this.hungerAlert   = new HungerAlert(this);
         this.banditAlert   = new BanditAlert(this);
         this.questPanel       = new QuestPanel(this, gameScene.questSystem);

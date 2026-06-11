@@ -317,6 +317,7 @@ export class Preloader extends Phaser.Scene {
         this._makeHighlight('tile-highlight',    CW, CH, 0xffee00, 0.45);
         this._makeHighlight('tile-selected',     CW, CH, 0x44aaff, 0.65);
         this._makeHighlight('tile-ghost-claim',  CW, CH, 0x00ffcc, 0.40);
+        this._makeHighlight('tile-hint',         CW, CH, 0xffee00, 0.30);
         this._makeWorkerOverlay('tile-worker-overlay', CW, CH);
     }
 
