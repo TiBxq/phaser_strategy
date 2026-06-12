@@ -476,7 +476,7 @@ export class MapRenderer {
         if (this._hintSprites.length > 0) {
             this._hintTween = this.scene.tweens.add({
                 targets:  this._hintSprites,
-                alpha:    { from: 1, to: 0.35 },
+                alpha:    { from: 1, to: 0.55 },
                 duration: 700,
                 ease:     'Sine.easeInOut',
                 yoyo:     true,

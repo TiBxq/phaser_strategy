@@ -675,7 +675,7 @@ export class BuildingRenderer {
         if (this._questHintTween) this._questHintTween.stop();
         this._questHintTween = this.scene.tweens.add({
             targets:  this._questHintOverlay,
-            alpha:    { from: 0.55, to: 0.15 },
+            alpha:    { from: 1, to: 0.3 },
             duration: 600,
             ease:     'Sine.easeInOut',
             yoyo:     true,

@@ -148,10 +148,13 @@ export class VillagerPanel {
 
     _startPlusPulse() {
         if (this._plusPulseTween) return;
-        this._btnPlus.setTint(0xffcc33);
+        // Re-anchor the button on its visual centre (PX+64, same as the label)
+        // so the scale pulse grows in place instead of stretching rightward
+        this._btnPlus.setOrigin(0.5, 0.5).setX(PX + 64).setTint(0xffcc33);
         this._plusPulseTween = this.scene.tweens.add({
             targets:  [this._btnPlus, this._lblPlus],
-            alpha:    { from: 1, to: 0.4 },
+            alpha:    { from: 1, to: 0.65 },
+            scale:    { from: 1, to: 1.25 },
             duration: 600,
             ease:     'Sine.easeInOut',
             yoyo:     true,
@@ -163,8 +166,9 @@ export class VillagerPanel {
         if (!this._plusPulseTween) return;
         this._plusPulseTween.stop();
         this._plusPulseTween = null;
-        this._btnPlus.clearTint().setAlpha(1);
-        this._lblPlus.setAlpha(1);
+        this._btnPlus.setOrigin(0, 0.5).setX(PX + 50)
+            .clearTint().setAlpha(1).setScale(1);
+        this._lblPlus.setAlpha(1).setScale(1);
     }
 
     _refresh() {

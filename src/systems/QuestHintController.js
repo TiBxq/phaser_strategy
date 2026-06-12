@@ -184,9 +184,10 @@ export class QuestHintController {
     }
 
     /**
-     * Valid placement anchors for the hinted building. Only shown for
-     * placement-constrained buildings (terrain or adjacency requirements) —
-     * highlighting half the map for plain-grass buildings would be noise.
+     * Full 2×2 footprints of all valid placement spots for the hinted building.
+     * Only shown for placement-constrained buildings (terrain or adjacency
+     * requirements) — highlighting half the map for plain-grass buildings
+     * would be noise.
      */
     _computePlacementHint(configId) {
         const config = BUILDING_CONFIGS[configId];
@@ -195,16 +196,21 @@ export class QuestHintController {
             || !config.buildableOn.includes('GRASS');
         if (!constrained) return [];
 
-        const anchors = [];
+        const seen  = new Set();
+        const tiles = [];
         for (let row = 0; row < MAP_SIZE; row++) {
             for (let col = 0; col < MAP_SIZE; col++) {
                 const result = this._buildSystem.canPlace(configId, col, row, this._tileMap);
                 // Affordability shouldn't hide the hint — the spot is still right
-                if (result.valid || result.reason === 'Insufficient resources.') {
-                    anchors.push({ col, row });
+                if (!result.valid && result.reason !== 'Insufficient resources.') continue;
+                for (const [dc, dr] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+                    const key = `${col + dc},${row + dr}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    tiles.push({ col: col + dc, row: row + dr });
                 }
             }
         }
-        return anchors;
+        return tiles;
     }
 }
