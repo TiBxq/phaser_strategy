@@ -85,6 +85,14 @@ export class BuildSystem {
         if (footprint.some(t => t.isRamp))
             return { valid: false, reason: 'Cannot build on a ramp.' };
 
+        // A Farm that can't claim a single field block would never produce
+        if (config.onPlace === 'spawnFields') {
+            const hasField = this._fieldBlockCandidates(col, row)
+                .some(c => this._isValidFieldBlock(tileMap, c.col, c.row, heights[0]));
+            if (!hasField)
+                return { valid: false, reason: 'No room for fields next to the Farm.' };
+        }
+
         // Adjacency requirement — any 4-dir neighbour of any footprint tile must qualify
         if (config.requiresAdjacentTo) {
             const allNeighbours = footprint.flatMap(t => tileMap.getNeighbors(t.col, t.row));
@@ -373,19 +381,21 @@ export class BuildSystem {
      * Claims up to 4 adjacent 2×2 GRASS blocks as farm fields.
      * Tries the 4 cardinal positions (right, bottom, left, top) in order.
      */
-    _claimFieldBlocks(tileMap, bCol, bRow, uid, building) {
-        // 4 cardinal 2×2 block anchors directly adjacent to the 2×2 building footprint
-        const candidates = [
+    /** The 4 cardinal 2×2 block anchors directly adjacent to a 2×2 footprint. */
+    _fieldBlockCandidates(bCol, bRow) {
+        return [
             { col: bCol + 2, row: bRow     },   // right
             { col: bCol,     row: bRow + 2 },   // bottom
             { col: bCol - 2, row: bRow     },   // left
             { col: bCol,     row: bRow - 2 },   // top
         ];
+    }
 
+    _claimFieldBlocks(tileMap, bCol, bRow, uid, building) {
         // Fields must be at the same elevation as the building
         const buildingHeight = tileMap.getTile(bCol, bRow).height;
 
-        for (const { col: fc, row: fr } of candidates) {
+        for (const { col: fc, row: fr } of this._fieldBlockCandidates(bCol, bRow)) {
             if (!this._isValidFieldBlock(tileMap, fc, fr, buildingHeight)) continue;
             for (const [dc, dr] of FOOTPRINT) {
                 const t = tileMap.getTile(fc + dc, fr + dr);
