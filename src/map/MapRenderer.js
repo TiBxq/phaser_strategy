@@ -258,6 +258,7 @@ export class MapRenderer {
             .setDepth(DEPTH_TILE_HOVER)
             .setVisible(false)
             .setAlpha(0.9);
+        this._roadGhostShakeTween = null;
     }
 
     _bindEvents() {
@@ -499,6 +500,7 @@ export class MapRenderer {
     showRoadGhost(col, row, valid) {
         const tile = this.tileMap.getTile(col, row);
         if (!tile) { this.hideRoadGhost(); return; }
+        this._stopRoadGhostShake();
         const { x, y } = tileToWorld(col, row, tile.height);
         this._roadGhostSprite
             .setPosition(x, y)
@@ -507,7 +509,34 @@ export class MapRenderer {
     }
 
     hideRoadGhost() {
+        this._stopRoadGhostShake();
         this._roadGhostSprite.setVisible(false);
+    }
+
+    /** Quick left-right wiggle of the road ghost — feedback for a rejected placement. */
+    shakeRoadGhost() {
+        if (!this._roadGhostSprite.visible) return;
+        this._stopRoadGhostShake();
+        const baseX = this._roadGhostSprite.x;
+        this._roadGhostSprite.setX(baseX - 4);
+        this._roadGhostShakeTween = this.scene.tweens.add({
+            targets:  this._roadGhostSprite,
+            x:        baseX + 4,
+            duration: 50,
+            ease:     'Sine.easeInOut',
+            yoyo:     true,
+            repeat:   2,
+            onComplete: () => {
+                this._roadGhostSprite.setX(baseX);
+                this._roadGhostShakeTween = null;
+            },
+        });
+    }
+
+    _stopRoadGhostShake() {
+        if (!this._roadGhostShakeTween) return;
+        this._roadGhostShakeTween.stop();
+        this._roadGhostShakeTween = null;
     }
 
     /** Refresh the texture of a single tile (e.g. after it becomes a field or road). */

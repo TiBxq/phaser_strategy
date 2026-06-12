@@ -19,6 +19,7 @@ import { BanditCampSystem } from '../systems/BanditCampSystem.js';
 import { BanditThreatSystem } from '../systems/BanditThreatSystem.js';
 import { BanditRenderer } from '../bandits/BanditRenderer.js';
 import { CombatSystem } from '../combat/CombatSystem.js';
+import { playSfx } from '../combat/Combatant.js';
 import { RaidSystem } from '../combat/RaidSystem.js';
 import { CritterRenderer } from '../critters/CritterRenderer.js';
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
@@ -235,6 +236,8 @@ export class Game extends Phaser.Scene {
             const result = this.roadSystem.canPlace(col, row, this.tileMap, this.resourceSystem);
             if (!result.valid) {
                 GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: result.reason });
+                this.mapRenderer.shakeRoadGhost();
+                playSfx(this, 'sfx-error', { volume: 0.5 });
                 return;
             }
             this.roadSystem.place(col, row, this.tileMap, this.resourceSystem, this.buildSystem);
@@ -274,6 +277,8 @@ export class Game extends Phaser.Scene {
             const result = this.buildSystem.canPlace(configId, col, row, this.tileMap);
             if (!result.valid) {
                 GameEvents.emit(EventNames.SHOW_NOTIFICATION, { message: result.reason });
+                this.buildingRenderer.shakeGhost();
+                playSfx(this, 'sfx-error', { volume: 0.5 });
                 return;
             }
             const building = this.buildSystem.place(configId, col, row, this.tileMap, this.villagerManager);

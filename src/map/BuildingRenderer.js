@@ -47,6 +47,7 @@ export class BuildingRenderer {
         this._ghost = null;
         this._currentGhostConfigId = null;
         this._ghostTileSprites = [];
+        this._ghostShakeTween = null;
         // Selection highlight overlay for the selected building (depth 99999)
         this._selectionOverlay = null;
         // Quest-hint overlay pulsing over the building the active task points at
@@ -541,6 +542,7 @@ export class BuildingRenderer {
 
     updateGhost(col, row, isValid) {
         if (!this._ghost) return;
+        this._stopGhostShake();
         const anchorTile = this.tileMap.getTile(col, row);
         const anchorH    = anchorTile ? anchorTile.height : 0;
         const { x, y }   = tileToWorld(col, row, anchorH);
@@ -693,8 +695,35 @@ export class BuildingRenderer {
     }
 
     hideGhost() {
+        this._stopGhostShake();
         if (this._ghost) this._ghost.setVisible(false);
         this._clearGhostTiles();
+    }
+
+    /** Quick left-right wiggle of the ghost — feedback for a rejected placement. */
+    shakeGhost() {
+        if (!this._ghost || !this._ghost.visible) return;
+        this._stopGhostShake();
+        const baseX = this._ghost.x;
+        this._ghost.setX(baseX - 5);
+        this._ghostShakeTween = this.scene.tweens.add({
+            targets:  this._ghost,
+            x:        baseX + 5,
+            duration: 50,
+            ease:     'Sine.easeInOut',
+            yoyo:     true,
+            repeat:   2,
+            onComplete: () => {
+                this._ghost.setX(baseX);
+                this._ghostShakeTween = null;
+            },
+        });
+    }
+
+    _stopGhostShake() {
+        if (!this._ghostShakeTween) return;
+        this._ghostShakeTween.stop();
+        this._ghostShakeTween = null;
     }
 
     _clearGhostTiles() {
