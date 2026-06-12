@@ -3,16 +3,12 @@ import { EventNames } from '../events/EventNames.js';
 import { tileToWorld } from '../map/MapRenderer.js';
 import { DEPTH_FLOATING_LABEL } from '../config/DepthLayers.js';
 import {
-    CAMP_STATS, HIT_INTERVAL_MS, HIT_IMPACT_MS, ENGAGE_RANGE,
+    CAMP_STATS, HIT_INTERVAL_MS, HIT_IMPACT_MS, ENGAGE_RANGE, SWING_FOLLOW_THROUGH_MS,
 } from '../data/CombatConfig.js';
 import { playSfx, spawnDamageFloat } from './Combatant.js';
 import { isWalkable } from '../villagers/walkable.js';
 
 const APPROACH_RETRIES = 3;
-// Damage lands mid-swing (HIT_IMPACT_MS into a ~750 ms attack animation).
-// Reassigning the winner right at impact would cut the swing into a walk —
-// wait out the follow-through before marching anywhere.
-const SWING_FOLLOW_THROUGH_MS = 500;
 const RING_WAIT_RETRIES = 10;   // waiting for a camp perimeter spot to free up
 const DESTACK_DELAY_MS  = 1000; // let held bandits finish their current step first
 const UNREACHABLE_TTL_MS = 8000; // failed-path marks expire so bandits get retried
@@ -69,6 +65,9 @@ export class CombatSystem {
 
         this._active = true;
         this._claims.clear();
+        // Dissolve any in-flight pillage raid first (synchronous) — its duels
+        // and locks must be gone before assault targets are assigned below.
+        GameEvents.emit(EventNames.BANDIT_CAMP_ASSAULT_STARTED);
         for (const b of this._banditRenderer.bandits) {
             b.holdPosition();
             b.combat.onDeathComplete = (host) => this._banditRenderer.removeBandit(host);

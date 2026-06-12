@@ -56,6 +56,11 @@ export class BuildingRenderer {
         this._bindEvents();
     }
 
+    /** The building's world sprite (for hit feedback / HP bar anchoring). */
+    getSprite(uid) {
+        return this._buildingSprites.get(uid) ?? null;
+    }
+
     // ─── Events ────────────────────────────────────────────────────────────────
 
     _bindEvents() {

@@ -1,11 +1,9 @@
-import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { FOG_VISIBLE } from './FogOfWarSystem.js';
 import { GameEvents } from '../events/GameEvents.js';
 import { EventNames } from '../events/EventNames.js';
 
-const POP_THRESHOLD    = 10;
-const GRACE_CYCLES     = 5;
-const PILLAGE_INTERVAL = 10;
+const POP_THRESHOLD = 10;
+const GRACE_CYCLES  = 5;
 
 export class BanditThreatSystem {
     constructor(banditCampSystem, fogSystem, villagerManager, resourceSystem, buildSystem, tileMap) {
@@ -19,7 +17,6 @@ export class BanditThreatSystem {
         this._state             = 'inactive';   // 'inactive' | 'raiding' | 'pillaging'
         this._triggered         = false;
         this._zeroMoneyCycles   = 0;
-        this._pillageCounter    = 0;
         this._pillageTargetUid  = null;
         this._lastStealAmount   = 0;
 
@@ -35,7 +32,6 @@ export class BanditThreatSystem {
         GameEvents.on(EventNames.BANDIT_CAMP_CLEARED, () => {
             this._triggered        = false;
             this._zeroMoneyCycles  = 0;
-            this._pillageCounter   = 0;
             this._pillageTargetUid = null;
             this._lastStealAmount  = 0;
             this._setState('inactive');
@@ -55,7 +51,6 @@ export class BanditThreatSystem {
             state:            this._state,
             triggered:        this._triggered,
             zeroMoneyCycles:  this._zeroMoneyCycles,
-            pillageCounter:   this._pillageCounter,
             pillageTargetUid: this._pillageTargetUid,
             lastStealAmount:  this._lastStealAmount,
         };
@@ -66,9 +61,14 @@ export class BanditThreatSystem {
         this._state            = data.state;
         this._triggered        = data.triggered;
         this._zeroMoneyCycles  = data.zeroMoneyCycles;
-        this._pillageCounter   = data.pillageCounter;
         this._pillageTargetUid = data.pillageTargetUid;
         this._lastStealAmount  = data.lastStealAmount;
+    }
+
+    /** Pick a new pillage target, excluding a building the raiders cannot reach.
+     *  Falls back to the excluded one when it is the only candidate left. */
+    reselectTarget(excludeUid) {
+        this._selectNewTarget(excludeUid);
     }
 
     // ── Private ──────────────────────────────────────────────────────────────────
@@ -109,26 +109,20 @@ export class BanditThreatSystem {
         if (fullPaid) {
             this._zeroMoneyCycles = 0;
             if (this._state === 'pillaging') {
-                this._pillageCounter   = 0;
                 this._pillageTargetUid = null;
                 GameEvents.emit(EventNames.BANDIT_PILLAGE_TARGET, { buildingUid: null });
                 this._setState('raiding');
             }
         } else {
             this._zeroMoneyCycles++;
-            if (this._zeroMoneyCycles > GRACE_CYCLES) {
-                if (this._state !== 'pillaging') {
-                    this._setState('pillaging');
-                    GameEvents.emit(EventNames.SHOW_NOTIFICATION,
-                        { message: 'Bandits are pillaging your town!' });
-                    this._selectNewTarget();
-                }
-                this._pillageCounter++;
-                if (this._pillageCounter >= PILLAGE_INTERVAL) {
-                    this._pillageCounter = 0;
-                    this._destroyTarget();
-                }
+            if (this._zeroMoneyCycles > GRACE_CYCLES && this._state !== 'pillaging') {
+                this._setState('pillaging');
+                GameEvents.emit(EventNames.SHOW_NOTIFICATION,
+                    { message: 'Bandits are pillaging your town!' });
+                this._selectNewTarget();
             }
+            // Physical destruction is RaidSystem's job — it reacts to the
+            // 'pillaging' state change and marches the bandits out.
         }
     }
 
@@ -146,10 +140,13 @@ export class BanditThreatSystem {
             { state, stealAmount: this._getStealAmount() });
     }
 
-    _selectNewTarget() {
-        const candidates = [];
+    _selectNewTarget(excludeUid = null) {
+        let candidates = [];
         for (const b of this._buildSystem.placedBuildings.values()) {
             if (b.configId !== 'TOWN_HALL') candidates.push(b);
+        }
+        if (excludeUid && candidates.length >= 2) {
+            candidates = candidates.filter(b => b.uid !== excludeUid);
         }
         if (candidates.length === 0) {
             this._pillageTargetUid = null;
@@ -159,22 +156,5 @@ export class BanditThreatSystem {
         const target = candidates[Math.floor(Math.random() * candidates.length)];
         this._pillageTargetUid = target.uid;
         GameEvents.emit(EventNames.BANDIT_PILLAGE_TARGET, { buildingUid: target.uid });
-    }
-
-    _destroyTarget() {
-        const uid = this._pillageTargetUid;
-        const building = uid ? this._buildSystem.placedBuildings.get(uid) : null;
-        if (!building) {
-            this._selectNewTarget();
-            return;
-        }
-        const label = BUILDING_CONFIGS[building.configId]?.label ?? building.configId;
-        // Null out target before demolish so BUILDING_REMOVED handler doesn't double-select
-        this._pillageTargetUid = null;
-        GameEvents.emit(EventNames.SHOW_NOTIFICATION,
-            { message: `Bandits destroyed your ${label}!` });
-        this._buildSystem.demolishHard(uid, this._tileMap, this._villagerManager);
-        // Pick next target for the next pillage cycle
-        this._selectNewTarget();
     }
 }

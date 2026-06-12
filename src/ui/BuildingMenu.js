@@ -171,6 +171,12 @@ export class BuildingMenu {
         return [...this._everPlaced];
     }
 
+    /** Dev cheat: unlock every build button as if all prerequisites were placed. */
+    unlockAll() {
+        for (const id of Object.keys(BUILDING_CONFIGS)) this._everPlaced.add(id);
+        this._updateLockStates();
+    }
+
     /**
      * Returns true if all requires conditions for this building ID are met.
      * Extensible: add new condition types here as the game grows.

@@ -50,6 +50,36 @@ export class BanditRenderer {
         entity.destroy();
     }
 
+    /** Spawn a single replacement bandit near the camp (raid respawns).
+     *  Returns the new entity, or null when the camp is gone, the pool is
+     *  already full, or no spawn tile exists. */
+    spawnOne() {
+        if (!this._banditCampSystem.isActive()) return null;
+        if (this._bandits.length >= BANDIT_COUNT) return null;
+
+        const { campCol, campRow } = this._banditCampSystem;
+        const pool = this._reachableTilesNearCamp(SPAWN_RADIUS);
+        const used = new Set(this._bandits.map(b => `${b.col},${b.row}`));
+
+        let tile = null;
+        for (let attempt = 0; attempt < 10 && !tile; attempt++) {
+            const t = pool.length
+                ? pool[Math.floor(Math.random() * pool.length)]
+                : randomWalkableTileNear(this._tileMap, campCol, campRow, SPAWN_RADIUS);
+            if (t && !used.has(`${t.col},${t.row}`)) tile = t;
+        }
+        if (!tile) return null;
+
+        const bandit = new BanditEntity(
+            this._scene, this._tileMap,
+            tile.col, tile.row,
+            campCol, campRow,
+            this._fogSystem,
+        );
+        this._bandits.push(bandit);
+        return bandit;
+    }
+
     /** Destroy only the camp sprite (combat kills the bandits individually). */
     destroyCampSprite() {
         if (this._campSprite) {

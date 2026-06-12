@@ -25,3 +25,24 @@ export const HEAL_AMOUNT      = 2;
 
 /** Chebyshev distance at which an approaching warrior engages its target. */
 export const ENGAGE_RANGE = 1;
+
+/** Damage lands mid-swing (HIT_IMPACT_MS into a ~750 ms attack animation).
+ *  Reassigning a winner right at impact would cut the swing into a walk —
+ *  wait out the follow-through before marching anywhere. */
+export const SWING_FOLLOW_THROUGH_MS = 500;
+
+/** A building under bandit attack — hit like the camp, never retaliates.
+ *  ~55 s for a lone raider (avg 10 dmg / 1.1 s), ~18 s for a party of 3. */
+export const PILLAGE_BUILDING_STATS = Object.freeze({ maxHp: 500, armor: 0 });
+
+/** Entering 'pillaging' (or loading a pillaging save) → first raid departs. */
+export const RAID_LAUNCH_DELAY_MS = 5_000;
+
+/** Pause between raids — after a success, a repel, or a lost target. */
+export const RAID_COOLDOWN_MS = 30_000;
+
+/** Delay before a raider killed in a raid respawns at the camp. */
+export const BANDIT_RESPAWN_MS = 20_000;
+
+/** Re-poll interval when a raid launch is blocked (assault active / no bandits). */
+export const RAID_RETRY_MS = 5_000;

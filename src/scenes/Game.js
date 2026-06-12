@@ -19,6 +19,7 @@ import { BanditCampSystem } from '../systems/BanditCampSystem.js';
 import { BanditThreatSystem } from '../systems/BanditThreatSystem.js';
 import { BanditRenderer } from '../bandits/BanditRenderer.js';
 import { CombatSystem } from '../combat/CombatSystem.js';
+import { RaidSystem } from '../combat/RaidSystem.js';
 import { CritterRenderer } from '../critters/CritterRenderer.js';
 import { BUILDING_CONFIGS } from '../data/BuildingConfig.js';
 import { GameEvents } from '../events/GameEvents.js';
@@ -112,6 +113,20 @@ export class Game extends Phaser.Scene {
             SaveManager.syncRenderers(this);
         }
 
+        // Physical pillaging raids. Constructed after hydration so its
+        // constructor sees a loaded 'pillaging' state and restarts the cycle.
+        this.raidSystem = new RaidSystem(this, {
+            tileMap:            this.tileMap,
+            banditRenderer:     this.banditRenderer,
+            warriorRenderer:    this.warriorRenderer,
+            buildingRenderer:   this.buildingRenderer,
+            buildSystem:        this.buildSystem,
+            villagerManager:    this.villagerManager,
+            banditCampSystem:   this.banditCampSystem,
+            banditThreatSystem: this.banditThreatSystem,
+            combatSystem:       this.combatSystem,
+        });
+
         // Dev/testing cheat: spawn a warrior squad near the bandit camp and start
         // the assault immediately, skipping the economic buildup.
         // Usage from the browser console: __combatTest(5)
@@ -126,6 +141,44 @@ export class Game extends Phaser.Scene {
             });
             this.combatSystem.startAssault();
             return `assault started with ${count} warriors from (${stageCol}, ${stageRow})`;
+        };
+
+        // Dev/testing cheat: unlock the whole build menu and top up every
+        // resource to the cap, so anything (esp. Barracks) is buildable right
+        // away — placement itself stays manual via the UI.
+        // Usage from the browser console: __devUnlock()
+        window.__devUnlock = () => {
+            this.scene.get('UI')?.buildingMenu?.unlockAll();
+            for (const name of Object.keys(this.resourceSystem.getAll())) {
+                this.resourceSystem.add(name, this.resourceSystem.getCap());
+            }
+            return 'build menu unlocked, resources topped up to the cap';
+        };
+
+        // Dev/testing cheat: force the bandit threat into 'pillaging' so a
+        // raid departs in ~5 s. Keeps money at 0 — earning the demanded gold
+        // on a production tick reverts the state to 'raiding' and aborts the
+        // raid. Optionally spawns cheat warriors near the Town Hall.
+        // Usage from the browser console: __raidTest(2)
+        window.__raidTest = (defenders = 0) => {
+            const buildings = [...this.buildSystem.placedBuildings.values()];
+            if (!buildings.some(b => b.configId !== 'TOWN_HALL')) {
+                return 'place at least one non-Town-Hall building first (__devUnlock() helps)';
+            }
+            const money = this.resourceSystem.get('money');
+            if (money > 0) this.resourceSystem.spend({ money });
+            if (defenders > 0) {
+                const at = buildings.find(b => b.configId === 'TOWN_HALL') ?? buildings[0];
+                this.warriorRenderer._syncPool('__CHEAT__', {
+                    col: at.col, row: at.row, assignedVillagers: defenders,
+                });
+            }
+            const bts = this.banditThreatSystem;
+            bts._triggered       = true;
+            bts._zeroMoneyCycles = 99;
+            bts._setState('pillaging');
+            bts._selectNewTarget();
+            return 'pillaging forced — raid departs in ~5 s (keep money at 0)';
         };
 
         // ── Music ──────────────────────────────────────────────────────────────

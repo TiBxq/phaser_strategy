@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { tileToWorld, TILE_H } from '../map/MapRenderer.js';
 import { aStar } from '../pathfinding/AStar.js';
-import { isWalkable, randomWalkableTileNear, heightMoveCost } from '../villagers/walkable.js';
+import { isWalkable, isWalkableForMarch, marchMoveCost, randomWalkableTileNear, heightMoveCost } from '../villagers/walkable.js';
 import { LAYER_VILLAGER, LAYER_SHADOW, HEIGHT_DEPTH_BIAS } from '../config/DepthLayers.js';
 import { FOG_HIDDEN, FOG_BORDER } from '../systems/FogOfWarSystem.js';
 import { Combatant } from '../combat/Combatant.js';
@@ -95,6 +95,103 @@ export class BanditEntity {
         this._walkStep();
     }
 
+    /**
+     * March to one exact tile (raid positioning — no offset search). Unlike
+     * wandering this uses isWalkableForMarch + marchMoveCost so occupied tiles
+     * are passable at high cost. Bandits never reveal fog while marching.
+     * Returns true when a path was found (or the bandit is already there);
+     * returns false WITHOUT calling onArrived when the tile is unreachable.
+     */
+    marchToTile(targetCol, targetRow, onArrived) {
+        if (this.combat.isDead) return false;
+        if (this._wanderTimer) { this._wanderTimer.remove(); this._wanderTimer = null; }
+        this._scene.tweens.killTweensOf(this._sprite);
+        this._scene.tweens.killTweensOf(this._shadow);
+
+        const currTile = this._tileMap.getTile(this.col, this.row);
+        const currH    = currTile ? currTile.height : 0;
+        const { x, y } = tileToWorld(this.col, this.row, currH);
+        const spriteY  = y - TILE_H + ORC_Y_ADJUST;
+        this._sprite.setPosition(x, spriteY);
+        this._shadow.setPosition(x, spriteY);
+        this._held       = false;
+        this._onWalkDone = null;
+        this._path       = [];
+        this._pathStep   = 0;
+
+        if (this.col === targetCol && this.row === targetRow) {
+            if (this._isWalking) {
+                this._isWalking = false;
+                this._sprite.play('orc-idle');
+            }
+            if (onArrived) onArrived();
+            return true;
+        }
+
+        const path = aStar(
+            this._tileMap,
+            { col: this.col, row: this.row },
+            { col: targetCol, row: targetRow },
+            isWalkableForMarch,
+            marchMoveCost,
+        );
+        if (path.length < 2) return false;
+
+        this._onWalkDone = onArrived ?? null;
+        this._path       = path;
+        this._pathStep   = 1;
+        this._walkStep();
+        return true;
+    }
+
+    /** March back to the camp (any free tile around the 2×2 footprint), then
+     *  resume normal wandering. */
+    marchHome() {
+        if (this.combat.isDead) return;
+        if (this._wanderTimer) { this._wanderTimer.remove(); this._wanderTimer = null; }
+        this._scene.tweens.killTweensOf(this._sprite);
+        this._scene.tweens.killTweensOf(this._shadow);
+
+        const currTile = this._tileMap.getTile(this.col, this.row);
+        const currH    = currTile ? currTile.height : 0;
+        const { x, y } = tileToWorld(this.col, this.row, currH);
+        const spriteY  = y - TILE_H + ORC_Y_ADJUST;
+        this._sprite.setPosition(x, spriteY);
+        this._shadow.setPosition(x, spriteY);
+        this._held       = false;
+        this._onWalkDone = null;
+        this._path       = [];
+        this._pathStep   = 0;
+
+        const offsets = [
+            [0,-1],[1,-1],[-1,0],[2,0],[-1,1],[2,1],[0,2],[1,2],
+            [-1,-1],[2,-1],[-1,2],[2,2],
+        ];
+        let path = [];
+        for (const [dc, dr] of offsets) {
+            const alt = aStar(
+                this._tileMap,
+                { col: this.col, row: this.row },
+                { col: this._campCol + dc, row: this._campRow + dr },
+                isWalkableForMarch,
+                marchMoveCost,
+            );
+            if (alt.length >= 2) { path = alt; break; }
+        }
+
+        if (path.length < 2) {
+            // Stranded — just wander where it stands (wander re-centers on camp
+            // whenever a path exists)
+            this._scheduleWander();
+            return;
+        }
+
+        this._onWalkDone = () => this._scheduleWander();
+        this._path       = path;
+        this._pathStep   = 1;
+        this._walkStep();
+    }
+
     /** Resume normal wandering (assault failed / was aborted). */
     resumeWandering() {
         if (!this._held) return;
@@ -161,6 +258,7 @@ export class BanditEntity {
     _walkStep() {
         if (this._held || this.combat.isDead) {
             this._path = []; this._pathStep = 0;
+            this._onWalkDone = null;   // a held march/relocation must not fire its arrival callback later
             if (this._isWalking) {
                 this._isWalking = false;
                 if (!this.combat.isDead) this._sprite.play('orc-idle');

@@ -130,6 +130,10 @@ export const EventNames = Object.freeze({
     // A building has been marked as the next pillage target — payload: { buildingUid: string|null }
     BANDIT_PILLAGE_TARGET: 'bandit:pillage_target',
 
+    // A camp assault began — RaidSystem dissolves any in-flight raid before
+    // CombatSystem assigns assault targets (emitted synchronously)
+    BANDIT_CAMP_ASSAULT_STARTED: 'bandit:assault_started',
+
     // Request a free villager to march to a production building — payload: { buildingUid }
     WORKER_DISPATCH_REQUEST: 'worker:dispatch_request',
 
